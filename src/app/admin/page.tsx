@@ -48,6 +48,7 @@ export default function AdminDashboard() {
   // 검색 및 필터링 상태
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<string>("default");
+  const [expandedSchools, setExpandedSchools] = useState<{ [key: string]: boolean }>({});
   const [monitorFilter, setMonitorFilter] = useState<"all" | "low">("all");
   
   // 인라인 수정 상태
@@ -263,30 +264,131 @@ export default function AdminDashboard() {
     }
   };
 
-  // 필터링 및 정렬된 예산 배정 목록 산출 (그리드용)
-  const filteredAllocations = allocations
-    .filter((a) => {
+  // 아코디언 토글 헬퍼
+  const toggleSchoolExpand = (schoolName: string) => {
+    setExpandedSchools((prev) => ({
+      ...prev,
+      [schoolName]: !prev[schoolName],
+    }));
+  };
+
+  // 필터링 및 정렬/그룹화된 예산 데이터 산출
+  const groupedData = (() => {
+    const filtered = allocations.filter((a) => {
       const query = searchQuery.toLowerCase();
       return (
         a.schoolName.toLowerCase().includes(query) ||
         a.projectName.toLowerCase().includes(query) ||
         a.projectCode.toLowerCase().includes(query)
       );
-    })
-    .sort((a, b) => {
-      if (sortBy === "school") {
-        return a.schoolName.localeCompare(b.schoolName, "ko-KR");
-      }
-      if (sortBy === "project") {
-        const codeCompare = a.projectCode.localeCompare(b.projectCode);
-        if (codeCompare !== 0) return codeCompare;
-        return a.projectName.localeCompare(b.projectName, "ko-KR");
-      }
-      if (sortBy === "funding") {
-        return a.fundingSource.localeCompare(b.fundingSource, "ko-KR");
-      }
-      return 0; // default
     });
+
+    if (sortBy === "project") {
+      // 세부사업 코드/명칭별 그룹화
+      const projectMap = new Map<string, {
+        groupName: string;
+        groupCode: string;
+        allocatedTotal: number;
+        spentTotal: number;
+        items: Allocation[];
+      }>();
+
+      filtered.forEach((a) => {
+        const key = `${a.projectCode}_${a.projectName}`;
+        const current = projectMap.get(key) || {
+          groupName: a.projectName,
+          groupCode: a.projectCode,
+          allocatedTotal: 0,
+          spentTotal: 0,
+          items: []
+        };
+        current.allocatedTotal += a.allocatedAmount;
+        current.spentTotal += a.spentAmount;
+        current.items.push(a);
+        projectMap.set(key, current);
+      });
+
+      const list = Array.from(projectMap.values());
+      list.sort((a, b) => a.groupCode.localeCompare(b.groupCode));
+      return { type: "project", list };
+    }
+
+    if (sortBy === "funding") {
+      // 재원(지원형태)별 그룹화
+      const fundingMap = new Map<string, {
+        groupName: string;
+        allocatedTotal: number;
+        spentTotal: number;
+        items: Allocation[];
+      }>();
+
+      filtered.forEach((a) => {
+        const current = fundingMap.get(a.fundingSource) || {
+          groupName: a.fundingSource,
+          allocatedTotal: 0,
+          spentTotal: 0,
+          items: []
+        };
+        current.allocatedTotal += a.allocatedAmount;
+        current.spentTotal += a.spentAmount;
+        current.items.push(a);
+        fundingMap.set(a.fundingSource, current);
+      });
+
+      const list = Array.from(fundingMap.values());
+      list.sort((a, b) => a.groupName.localeCompare(b.groupName, "ko-KR"));
+      return { type: "funding", list };
+    }
+
+    // 기본(default) 또는 학교명 정렬: 학교별 그룹화
+    const schoolMap = new Map<string, {
+      groupName: string;
+      schoolId: number | string;
+      level: "초등" | "중등" | "고등" | "기타";
+      allocatedTotal: number;
+      spentTotal: number;
+      items: Allocation[];
+    }>();
+
+    filtered.forEach((a) => {
+      let level: "초등" | "중등" | "고등" | "기타" = "기타";
+      if (a.schoolName.includes("초등학교")) level = "초등";
+      else if (a.schoolName.includes("중학교")) level = "중등";
+      else if (a.schoolName.includes("고등학교")) level = "고등";
+
+      const current = schoolMap.get(a.schoolName) || {
+        groupName: a.schoolName,
+        schoolId: a.schoolId,
+        level,
+        allocatedTotal: 0,
+        spentTotal: 0,
+        items: []
+      };
+
+      current.allocatedTotal += a.allocatedAmount;
+      current.spentTotal += a.spentAmount;
+      current.items.push(a);
+      schoolMap.set(a.schoolName, current);
+    });
+
+    const list = Array.from(schoolMap.values());
+    
+    if (sortBy === "school_name") {
+      // 학교명 단순 가나다 정렬
+      list.sort((a, b) => a.groupName.localeCompare(b.groupName, "ko-KR"));
+    } else {
+      // 학교급 순(초-중-고-기타) 정렬
+      const levelOrder = { "초등": 1, "중등": 2, "고등": 3, "기타": 4 };
+      list.sort((a, b) => {
+        const orderA = levelOrder[a.level || "기타"];
+        const orderB = levelOrder[b.level || "기타"];
+        if (orderA !== orderB) return orderA - orderB;
+        return a.groupName.localeCompare(b.groupName, "ko-KR");
+      });
+    }
+
+    return { type: "school", list };
+  })();
 
   // 학교별 집행 현황 요약 데이터 산출 (모니터링용)
   const schoolSummaries: SchoolSummary[] = (() => {
@@ -399,14 +501,17 @@ export default function AdminDashboard() {
                   <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>정렬/그룹화:</span>
                   <select
                     className="form-control"
-                    style={{ width: '170px', padding: '0.5rem 0.75rem', fontSize: '0.875rem' }}
+                    style={{ width: '190px', padding: '0.5rem 0.75rem', fontSize: '0.875rem' }}
                     value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
+                    onChange={(e) => {
+                      setSortBy(e.target.value);
+                      setExpandedSchools({}); // 정렬 기준 변경 시 펼침 상태 초기화
+                    }}
                   >
-                    <option value="default">기본 순서</option>
-                    <option value="school">학교명 정렬</option>
-                    <option value="project">세부사업코드 정렬</option>
-                    <option value="funding">재원(지원형태) 정렬</option>
+                    <option value="default">학교급 순 (초-중-고)</option>
+                    <option value="school_name">학교명 가나다순</option>
+                    <option value="project">세부사업별 묶음</option>
+                    <option value="funding">재원별 묶음</option>
                   </select>
                 </div>
                 <input
@@ -420,101 +525,216 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div className="table-container">
-              <table className="premium-table">
-                <thead>
-                  <tr>
-                    <th>학교명</th>
-                    <th>유형</th>
-                    <th>코드</th>
-                    <th>세부 사업 명칭</th>
-                    <th>재원</th>
-                    <th style={{ textAlign: 'right' }}>교부 금액</th>
-                    <th style={{ textAlign: 'center' }}>지출액</th>
-                    <th style={{ textAlign: 'center' }}>비밀번호</th>
-                    <th style={{ textAlign: 'center' }}>관리</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredAllocations.length === 0 ? (
-                    <tr>
-                      <td colSpan={9} style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '3rem' }}>
-                        검색 결과가 존재하지 않거나 등록된 예산 데이터가 없습니다.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredAllocations.map((alloc) => (
-                      <tr key={alloc.id}>
-                        <td style={{ fontWeight: 700 }}>{alloc.schoolName}</td>
-                        <td>
-                          <span className={`project-tag ${alloc.projectType === "필수" ? "required" : "contest"}`}>
-                            {alloc.projectType}
-                          </span>
-                        </td>
-                        <td className="project-code">{alloc.projectCode}</td>
-                        <td style={{ maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={alloc.projectName}>
-                          {alloc.projectName}
-                        </td>
-                        <td>{alloc.fundingSource}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--text-contrast)' }}>
-                          {editingId === alloc.id ? (
-                            <input
-                              className="grid-edit-input"
-                              type="text"
-                              value={editValue}
-                              onChange={(e) => setEditValue(e.target.value)}
-                              autoFocus
-                            />
-                          ) : (
-                            `${alloc.allocatedAmount.toLocaleString()}원`
-                          )}
-                        </td>
-                        <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
-                          {alloc.spentAmount.toLocaleString()}원
-                        </td>
-                        <td style={{ textAlign: 'center' }}>
-                          <button
-                            className="btn btn-secondary"
-                            onClick={() => resetPassword(alloc.schoolId, alloc.schoolName)}
-                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
-                          >
-                            초기화
-                          </button>
-                        </td>
-                        <td style={{ textAlign: 'center' }}>
-                          {editingId === alloc.id ? (
-                            <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'center' }}>
-                              <button
-                                className="btn btn-success"
-                                onClick={() => saveEdit(alloc.id)}
-                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
-                              >
-                                저장
-                              </button>
-                              <button
-                                className="btn btn-secondary"
-                                onClick={cancelEdit}
-                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
-                              >
-                                취소
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              className="btn btn-primary"
-                              onClick={() => startEdit(alloc)}
-                              style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
-                            >
-                              수정
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+            {/* 전체 펼치기 / 접기 퀵 툴바 */}
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => {
+                  const allExp: any = {};
+                  groupedData.list.forEach((g: any) => { allExp[g.groupName] = true; });
+                  setExpandedSchools(allExp);
+                }}
+                style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
+              >
+                모두 펼치기
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setExpandedSchools({})}
+                style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
+              >
+                모두 접기
+              </button>
             </div>
+
+            {/* 아코디언 목록 뷰 */}
+            {groupedData.list.length === 0 ? (
+              <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '3.5rem 1rem', background: 'rgba(255, 255, 255, 0.01)', borderRadius: '8px', border: '1px dashed rgba(255, 255, 255, 0.08)' }}>
+                검색 결과가 존재하지 않거나 등록된 예산 데이터가 없습니다.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {groupedData.list.map((group: any) => {
+                  const isExpanded = expandedSchools[group.groupName] || false;
+                  return (
+                    <div key={group.groupName} style={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                      {/* 아코디언 헤더 */}
+                      <div
+                        onClick={() => toggleSchoolExpand(group.groupName)}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '1rem 1.5rem',
+                          background: isExpanded ? 'rgba(99, 102, 241, 0.08)' : 'rgba(255, 255, 255, 0.02)',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                          {groupedData.type === "school" && (
+                            <span className={`school-level-badge level-${group.level}`}>
+                              {group.level}
+                            </span>
+                          )}
+                          {groupedData.type === "project" && (
+                            <span className="school-level-badge" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+                              코드 {group.groupCode}
+                            </span>
+                          )}
+                          {groupedData.type === "funding" && (
+                            <span className="school-level-badge" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                              재원
+                            </span>
+                          )}
+                          <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>{group.groupName}</span>
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                            ({groupedData.type === "school" ? "세부사업" : "학교수"} {group.items.length}개)
+                          </span>
+                        </div>
+                        
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                          <div style={{ display: 'flex', gap: '1.25rem', fontSize: '0.875rem', flexWrap: 'wrap' }}>
+                            <div>
+                              <span style={{ color: 'var(--text-secondary)', marginRight: '0.25rem' }}>총 교부:</span>
+                              <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{group.allocatedTotal.toLocaleString()}원</span>
+                            </div>
+                            <div>
+                              <span style={{ color: 'var(--text-secondary)', marginRight: '0.25rem' }}>총 지출:</span>
+                              <span style={{ fontWeight: 700, color: '#38bdf8' }}>{group.spentTotal.toLocaleString()}원</span>
+                            </div>
+                            <div>
+                              <span style={{ color: 'var(--text-secondary)', marginRight: '0.25rem' }}>집행률:</span>
+                              <span style={{
+                                fontWeight: 700,
+                                color: group.allocatedTotal > 0 && (group.spentTotal / group.allocatedTotal) * 100 > 90 ? '#f43f5e' : '#34d399'
+                              }}>
+                                {group.allocatedTotal > 0 ? ((group.spentTotal / group.allocatedTotal) * 100).toFixed(1) : '0.0'}%
+                              </span>
+                            </div>
+                          </div>
+                          <span style={{
+                            transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                            transition: 'transform 0.2s ease',
+                            fontSize: '0.875rem',
+                            color: 'var(--text-secondary)'
+                          }}>
+                            ▼
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* 아코디언 바디 */}
+                      {isExpanded && (
+                        <div
+                          style={{
+                            padding: '0.5rem 1.5rem 1.5rem',
+                            background: 'rgba(0, 0, 0, 0.15)',
+                            borderTop: '1px solid rgba(255, 255, 255, 0.05)',
+                          }}
+                        >
+                          <div className="table-container" style={{ margin: 0, boxShadow: 'none', background: 'none' }}>
+                            <table className="premium-table" style={{ background: 'none' }}>
+                              <thead>
+                                <tr>
+                                  {groupedData.type !== "school" && <th>학교명</th>}
+                                  {groupedData.type !== "project" && (
+                                    <>
+                                      <th>유형</th>
+                                      <th>코드</th>
+                                      <th>세부 사업 명칭</th>
+                                    </>
+                                  )}
+                                  {groupedData.type !== "funding" && <th>재원</th>}
+                                  <th style={{ textAlign: 'right' }}>교부 금액</th>
+                                  <th style={{ textAlign: 'center' }}>지출액</th>
+                                  <th style={{ textAlign: 'center' }}>비밀번호</th>
+                                  <th style={{ textAlign: 'center' }}>관리</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {group.items.map((alloc: any) => (
+                                  <tr key={alloc.id}>
+                                    {groupedData.type !== "school" && <td style={{ fontWeight: 700 }}>{alloc.schoolName}</td>}
+                                    {groupedData.type !== "project" && (
+                                      <>
+                                        <td>
+                                          <span className={`project-tag ${alloc.projectType === "필수" ? "required" : "contest"}`}>
+                                            {alloc.projectType}
+                                          </span>
+                                        </td>
+                                        <td className="project-code">{alloc.projectCode}</td>
+                                        <td style={{ maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={alloc.projectName}>
+                                          {alloc.projectName}
+                                        </td>
+                                      </>
+                                    )}
+                                    {groupedData.type !== "funding" && <td>{alloc.fundingSource}</td>}
+                                    <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--text-contrast)' }}>
+                                      {editingId === alloc.id ? (
+                                        <input
+                                          className="grid-edit-input"
+                                          type="text"
+                                          value={editValue}
+                                          onChange={(e) => setEditValue(e.target.value)}
+                                          autoFocus
+                                        />
+                                      ) : (
+                                        `${alloc.allocatedAmount.toLocaleString()}원`
+                                      )}
+                                    </td>
+                                    <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+                                      {alloc.spentAmount.toLocaleString()}원
+                                    </td>
+                                    <td style={{ textAlign: 'center' }}>
+                                      <button
+                                        className="btn btn-secondary"
+                                        onClick={() => resetPassword(alloc.schoolId, alloc.schoolName)}
+                                        style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                                      >
+                                        초기화
+                                      </button>
+                                    </td>
+                                    <td style={{ textAlign: 'center' }}>
+                                      {editingId === alloc.id ? (
+                                        <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'center' }}>
+                                          <button
+                                            className="btn btn-success"
+                                            onClick={() => saveEdit(alloc.id)}
+                                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                                          >
+                                            저장
+                                          </button>
+                                          <button
+                                            className="btn btn-secondary"
+                                            onClick={cancelEdit}
+                                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                                          >
+                                            취소
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <button
+                                          className="btn btn-primary"
+                                          onClick={() => startEdit(alloc)}
+                                          style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                                        >
+                                          수정
+                                        </button>
+                                      )}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
