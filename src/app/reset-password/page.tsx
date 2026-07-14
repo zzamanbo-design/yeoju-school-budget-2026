@@ -77,7 +77,9 @@ export default function ResetPasswordPage() {
     <div className="login-wrapper">
       <div className="login-card glass-card">
         <div className="login-header">
-          <div className="logo-icon" style={{ background: 'var(--secondary-gradient)' }}>열</div>
+          <div className="login-logo-container">
+            <img src="/logo-horizontal.jpg" alt="경기도여주교육지원청" className="login-logo-img" />
+          </div>
           <h1 className="login-title">새 비밀번호 설정</h1>
           <p className="login-subtitle">최초 로그인 또는 초기화 이후 비밀번호 변경이 필수적입니다.</p>
         </div>

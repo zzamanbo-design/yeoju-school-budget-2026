@@ -309,7 +309,7 @@ export default function AdminDashboard() {
       <header className="main-header">
         <div className="header-inner">
           <div className="logo-group">
-            <div className="logo-icon">관</div>
+            <img src="/logo-circle.png" alt="경기도여주교육지원청" className="header-logo-img" />
             <div className="logo-text">경기공유학교 예산지원센터</div>
             <div className="user-badge">여주교육지원청 관리자</div>
           </div>

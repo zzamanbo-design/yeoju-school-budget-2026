@@ -304,7 +304,7 @@ export default function SchoolDashboard() {
       <header className="main-header">
         <div className="header-inner">
           <div className="logo-group">
-            <div className="logo-icon" style={{ background: 'var(--primary-gradient)' }}>학</div>
+            <img src="/logo-circle.png" alt="경기도여주교육지원청" className="header-logo-img" />
             <div className="logo-text">경기공유학교 학교맞춤형 예산관리</div>
             <div className="user-badge">학교 사용자</div>
           </div>

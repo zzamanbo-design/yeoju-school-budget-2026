@@ -75,7 +75,9 @@ export default function LoginPage() {
     <div className="login-wrapper">
       <div className="login-card glass-card">
         <div className="login-header">
-          <div className="logo-icon">여</div>
+          <div className="login-logo-container">
+            <img src="/logo-horizontal.jpg" alt="경기도여주교육지원청" className="login-logo-img" />
+          </div>
           <h1 className="login-title">경기공유학교 예산시스템</h1>
           <p className="login-subtitle">2026 여주미래교육협력지구 학교맞춤형</p>
         </div>
