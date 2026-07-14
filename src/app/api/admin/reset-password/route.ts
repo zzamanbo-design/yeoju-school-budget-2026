@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/firebase";
-import { doc, updateDoc, getDoc } from "firebase/firestore";
+import { doc, updateDoc, getDoc, collection, getDocs, query, where, writeBatch } from "firebase/firestore";
 import { hashPassword } from "@/lib/hash";
 import { getSession } from "@/lib/auth";
 
@@ -15,7 +15,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { schoolId } = await request.json(); // schoolId is the school name document ID
+    const { schoolId, bulk } = await request.json();
+
+    if (bulk) {
+      // 1) 모든 학교(role === "school") 계정 일괄 조회
+      const q = query(collection(db, "school_accounts"), where("role", "==", "school"));
+      const snap = await getDocs(q);
+      
+      const batch = writeBatch(db);
+      snap.forEach((accountDoc) => {
+        batch.update(accountDoc.ref, {
+          password_hash: hashPassword("yeoju2026!"),
+          password_changed: false,
+        });
+      });
+
+      // 2) 배치 커밋 실행
+      await batch.commit();
+
+      return NextResponse.json({
+        success: true,
+        message: "모든 학교의 비밀번호가 'yeoju2026!'으로 일괄 초기화되었습니다.",
+      });
+    }
 
     if (!schoolId) {
       return NextResponse.json(

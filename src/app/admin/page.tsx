@@ -221,6 +221,34 @@ export default function AdminDashboard() {
     }
   };
 
+  // 전체 학교 계정 비밀번호 일괄 초기화
+  const handleBulkResetPassword = async () => {
+    const confirmReset = window.confirm(
+      "정말로 여주 관내 모든 학교 계정의 비밀번호를 'yeoju2026!'으로 일괄 초기화하시겠습니까?\n이 작업은 되돌릴 수 없으며, 모든 학교가 최초 비밀번호 변경 절차를 다시 진행해야 합니다."
+    );
+    if (!confirmReset) return;
+
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bulk: true }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setMessage({ type: "danger", text: data.error || "비밀번호 일괄 초기화에 실패했습니다." });
+      } else {
+        setMessage({ type: "success", text: "성공: 여주 관내 모든 학교 계정의 비밀번호가 'yeoju2026!'으로 일괄 초기화되었습니다." });
+      }
+    } catch {
+      setMessage({ type: "danger", text: "일괄 초기화 중 서버 통신 오류가 발생했습니다." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // 티켓 답변 등록 제출
   const submitAnswer = async (ticketId: number) => {
     const answerText = ticketAnswers[ticketId];
@@ -428,7 +456,7 @@ export default function AdminDashboard() {
         <div className="header-inner">
           <div className="logo-group">
             <img src="/logo-circle.png" alt="경기도여주교육지원청" className="header-logo-img" />
-            <div className="logo-text">경기공유학교 예산지원센터</div>
+            <div className="logo-text">여주 경기공유학교 학교맞춤형 예산지원센터</div>
             <div className="user-badge">여주교육지원청 관리자</div>
           </div>
           <div className="nav-group">
@@ -526,7 +554,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* 전체 펼치기 / 접기 퀵 툴바 */}
-            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem', flexWrap: 'wrap', alignItems: 'center', width: '100%' }}>
               <button
                 className="btn btn-secondary"
                 onClick={() => {
@@ -544,6 +572,21 @@ export default function AdminDashboard() {
                 style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
               >
                 모두 접기
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={handleBulkResetPassword}
+                style={{
+                  padding: '0.4rem 0.8rem',
+                  fontSize: '0.8rem',
+                  marginLeft: 'auto',
+                  border: '1px solid rgba(239, 68, 68, 0.4)',
+                  color: '#ef4444',
+                  background: 'rgba(239, 68, 68, 0.05)'
+                }}
+                disabled={loading}
+              >
+                🔑 전체 학교 비밀번호 일괄 초기화
               </button>
             </div>
 
