@@ -47,6 +47,7 @@ export default function AdminDashboard() {
 
   // 검색 및 필터링 상태
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<string>("default");
   const [monitorFilter, setMonitorFilter] = useState<"all" | "low">("all");
   
   // 인라인 수정 상태
@@ -262,15 +263,30 @@ export default function AdminDashboard() {
     }
   };
 
-  // 필터링된 예산 배정 목록 산출 (그리드용)
-  const filteredAllocations = allocations.filter((a) => {
-    const query = searchQuery.toLowerCase();
-    return (
-      a.schoolName.toLowerCase().includes(query) ||
-      a.projectName.toLowerCase().includes(query) ||
-      a.projectCode.toLowerCase().includes(query)
-    );
-  });
+  // 필터링 및 정렬된 예산 배정 목록 산출 (그리드용)
+  const filteredAllocations = allocations
+    .filter((a) => {
+      const query = searchQuery.toLowerCase();
+      return (
+        a.schoolName.toLowerCase().includes(query) ||
+        a.projectName.toLowerCase().includes(query) ||
+        a.projectCode.toLowerCase().includes(query)
+      );
+    })
+    .sort((a, b) => {
+      if (sortBy === "school") {
+        return a.schoolName.localeCompare(b.schoolName, "ko-KR");
+      }
+      if (sortBy === "project") {
+        const codeCompare = a.projectCode.localeCompare(b.projectCode);
+        if (codeCompare !== 0) return codeCompare;
+        return a.projectName.localeCompare(b.projectName, "ko-KR");
+      }
+      if (sortBy === "funding") {
+        return a.fundingSource.localeCompare(b.fundingSource, "ko-KR");
+      }
+      return 0; // default
+    });
 
   // 학교별 집행 현황 요약 데이터 산출 (모니터링용)
   const schoolSummaries: SchoolSummary[] = (() => {
@@ -378,14 +394,30 @@ export default function AdminDashboard() {
           <div className="glass-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem', alignItems: 'center' }}>
               <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>배정 예산 리스트</h2>
-              <input
-                className="form-control"
-                type="text"
-                placeholder="학교명, 사업명, 사업코드 검색..."
-                style={{ maxWidth: '300px' }}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>정렬/그룹화:</span>
+                  <select
+                    className="form-control"
+                    style={{ width: '170px', padding: '0.5rem 0.75rem', fontSize: '0.875rem' }}
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                  >
+                    <option value="default">기본 순서</option>
+                    <option value="school">학교명 정렬</option>
+                    <option value="project">세부사업코드 정렬</option>
+                    <option value="funding">재원(지원형태) 정렬</option>
+                  </select>
+                </div>
+                <input
+                  className="form-control"
+                  type="text"
+                  placeholder="학교명, 사업명, 사업코드 검색..."
+                  style={{ maxWidth: '250px', padding: '0.5rem 0.75rem', fontSize: '0.875rem' }}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
             </div>
 
             <div className="table-container">
