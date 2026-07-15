@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import { useRouter } from "next/navigation";
 
 interface Allocation {
@@ -50,6 +50,17 @@ export default function AdminDashboard() {
   const [sortBy, setSortBy] = useState<string>("default");
   const [expandedSchools, setExpandedSchools] = useState<{ [key: string]: boolean }>({});
   const [monitorFilter, setMonitorFilter] = useState<"all" | "low">("all");
+
+  // 특정 배정예산의 지출내역 아코디언 토글 및 상세 조회 상태
+  const [expandedAllocExps, setExpandedAllocExps] = useState<{ [key: string]: boolean }>({});
+  const [allocExpenditures, setAllocExpenditures] = useState<{ [key: string]: any[] }>({});
+
+  // 지출내역 상세 수정 관련 상태
+  const [editingExpId, setEditingExpId] = useState<string | null>(null);
+  const [editExpCategory, setEditExpCategory] = useState("");
+  const [editExpAmount, setEditExpAmount] = useState("");
+  const [editExpDate, setEditExpDate] = useState("");
+  const [editExpDescription, setEditExpDescription] = useState("");
   
   // 인라인 수정 상태
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -244,6 +255,104 @@ export default function AdminDashboard() {
       }
     } catch {
       setMessage({ type: "danger", text: "일괄 초기화 중 서버 통신 오류가 발생했습니다." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 특정 배정예산의 지출내역 아코디언 토글 및 비동기 조회
+  const toggleAllocExps = async (allocId: string) => {
+    const isExpanding = !expandedAllocExps[allocId];
+    setExpandedAllocExps(prev => ({ ...prev, [allocId]: isExpanding }));
+
+    if (isExpanding && !allocExpenditures[allocId]) {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/school/expenditures?allocationId=${allocId}`);
+        const data = await res.json();
+        if (res.ok) {
+          setAllocExpenditures(prev => ({ ...prev, [allocId]: data.expenditures }));
+        }
+      } catch (err) {
+        console.error("Load expenditures error:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  // 지출내역 상세 수정 이벤트 핸들러
+  const startEditExp = (exp: any) => {
+    setEditingExpId(exp.id);
+    setEditExpCategory(exp.expenseCategory);
+    setEditExpAmount(String(exp.amount));
+    setEditExpDate(exp.expenseDate);
+    setEditExpDescription(exp.description || "");
+  };
+
+  const saveEditExp = async (expId: string, allocId: string) => {
+    if (!editExpAmount || Number(editExpAmount) <= 0) {
+      alert("지출 금액을 0보다 큰 숫자로 입력해 주세요.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch("/api/school/expenditures", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: expId,
+          expenseCategory: editExpCategory,
+          amount: Number(editExpAmount),
+          expenseDate: editExpDate,
+          description: editExpDescription,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "지출 내역 수정에 실패했습니다.");
+      } else {
+        // 지출 내역 리스트 리로드
+        const resExp = await fetch(`/api/school/expenditures?allocationId=${allocId}`);
+        const dataExp = await resExp.json();
+        if (resExp.ok) {
+          setAllocExpenditures(prev => ({ ...prev, [allocId]: dataExp.expenditures }));
+        }
+        // 예산 총액 다시 로드
+        loadData();
+        setEditingExpId(null);
+      }
+    } catch (err) {
+      console.error("Save edit expenditure error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteExp = async (expId: string, allocId: string) => {
+    if (!confirm("정말로 이 지출 내역을 삭제하시겠습니까? 해당 예산의 집행 잔액이 즉시 복원됩니다.")) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/school/expenditures?id=${expId}`, {
+        method: "DELETE",
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "지출 내역 삭제에 실패했습니다.");
+      } else {
+        // 지출 내역 리스트 리로드
+        const resExp = await fetch(`/api/school/expenditures?allocationId=${allocId}`);
+        const dataExp = await resExp.json();
+        if (resExp.ok) {
+          setAllocExpenditures(prev => ({ ...prev, [allocId]: dataExp.expenditures }));
+        }
+        // 예산 총액 다시 로드
+        loadData();
+      }
+    } catch (err) {
+      console.error("Delete expenditure error:", err);
     } finally {
       setLoading(false);
     }
@@ -697,7 +806,8 @@ export default function AdminDashboard() {
                               </thead>
                               <tbody>
                                 {group.items.map((alloc: any) => (
-                                  <tr key={alloc.id}>
+                                  <Fragment key={alloc.id}>
+                                    <tr>
                                     {groupedData.type !== "school" && <td style={{ fontWeight: 700 }}>{alloc.schoolName}</td>}
                                     {groupedData.type !== "project" && (
                                       <>
@@ -707,8 +817,12 @@ export default function AdminDashboard() {
                                           </span>
                                         </td>
                                         <td className="project-code">{alloc.projectCode}</td>
-                                        <td style={{ maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={alloc.projectName}>
-                                          {alloc.projectName}
+                                        <td 
+                                          style={{ maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer', textDecoration: 'underline', color: 'var(--primary-light)' }} 
+                                          title={alloc.projectName + " (클릭 시 지출내역 상세 조회)"}
+                                          onClick={() => toggleAllocExps(alloc.id)}
+                                        >
+                                          📁 {alloc.projectName} <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>({expandedAllocExps[alloc.id] ? '접기' : '지출상세'})</span>
                                         </td>
                                       </>
                                     )}
@@ -723,11 +837,15 @@ export default function AdminDashboard() {
                                           autoFocus
                                         />
                                       ) : (
-                                        `${alloc.allocatedAmount.toLocaleString()}원`
+                                        alloc.allocatedAmount.toLocaleString() + "원"
                                       )}
                                     </td>
-                                    <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
-                                      {alloc.spentAmount.toLocaleString()}원
+                                    <td 
+                                      style={{ textAlign: 'center', color: '#38bdf8', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}
+                                      title="클릭하여 지출 세부 내역 상세 조회 및 수정"
+                                      onClick={() => toggleAllocExps(alloc.id)}
+                                    >
+                                      🔍 {alloc.spentAmount.toLocaleString()}원
                                     </td>
                                     <td style={{ textAlign: 'center' }}>
                                       <button
@@ -767,6 +885,148 @@ export default function AdminDashboard() {
                                       )}
                                     </td>
                                   </tr>
+                                  {expandedAllocExps[alloc.id] && (
+                                    <tr style={{ background: 'rgba(255, 255, 255, 0.01)' }}>
+                                      <td colSpan={groupedData.type === "school" ? 8 : 9} style={{ padding: '0.75rem 1.25rem 1.25rem' }}>
+                                        <div style={{ padding: '1rem', background: 'rgba(0, 0, 0, 0.25)', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                            <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: '#f3f4f6', margin: 0 }}>
+                                              📝 {alloc.schoolName} - [{alloc.projectCode}] {alloc.projectName} 지출 내역 상세
+                                            </h4>
+                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                              * 지출 비목, 금액, 날짜, 내용을 직접 수정하거나 삭제할 수 있습니다.
+                                            </span>
+                                          </div>
+
+                                          {!allocExpenditures[alloc.id] ? (
+                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', padding: '0.5rem 0' }}>로딩 중...</div>
+                                          ) : allocExpenditures[alloc.id].length === 0 ? (
+                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', padding: '1rem 0', textAlign: 'center' }}>
+                                              등록된 지출 내역이 없습니다.
+                                            </div>
+                                          ) : (
+                                            <table className="premium-table" style={{ background: 'rgba(0, 0, 0, 0.15)', fontSize: '0.8rem', margin: 0 }}>
+                                              <thead>
+                                                <tr>
+                                                  <th>지출 일자</th>
+                                                  <th>지출 비목</th>
+                                                  <th>지출 세부 내용</th>
+                                                  <th style={{ textAlign: 'right' }}>지출 금액</th>
+                                                  <th style={{ textAlign: 'center' }}>관리</th>
+                                                </tr>
+                                              </thead>
+                                              <tbody>
+                                                {allocExpenditures[alloc.id].map((exp: any) => {
+                                                  const isEditing = editingExpId === exp.id;
+                                                  return (
+                                                    <tr key={exp.id}>
+                                                      <td>
+                                                        {isEditing ? (
+                                                          <input
+                                                            type="date"
+                                                            className="form-control"
+                                                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', width: '130px', height: '1.8rem' }}
+                                                            value={editExpDate}
+                                                            onChange={(e) => setEditExpDate(e.target.value)}
+                                                          />
+                                                        ) : (
+                                                          exp.expenseDate
+                                                        )}
+                                                      </td>
+                                                      <td>
+                                                        {isEditing ? (
+                                                          <select
+                                                            className="form-control"
+                                                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', width: '150px', height: '1.8rem' }}
+                                                            value={editExpCategory}
+                                                            onChange={(e) => setEditExpCategory(e.target.value)}
+                                                          >
+                                                            <option value="운영비">운영비</option>
+                                                            <option value="강사비">강사비 (50% 상한)</option>
+                                                            <option value="학생 주·부식비">학생 주·부식비 (10% 상한)</option>
+                                                            <option value="업무추진비">업무추진비 (동적 상한)</option>
+                                                            <option value="여비">여비</option>
+                                                            <option value="자산취득비">자산취득비</option>
+                                                            <option value="기타">기타</option>
+                                                          </select>
+                                                        ) : (
+                                                          exp.expenseCategory
+                                                        )}
+                                                      </td>
+                                                      <td>
+                                                        {isEditing ? (
+                                                          <input
+                                                            type="text"
+                                                            className="form-control"
+                                                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', height: '1.8rem' }}
+                                                            value={editExpDescription}
+                                                            onChange={(e) => setEditExpDescription(e.target.value)}
+                                                          />
+                                                        ) : (
+                                                          exp.description || <span style={{ color: 'var(--text-secondary)' }}>(없음)</span>
+                                                        )}
+                                                      </td>
+                                                      <td style={{ textAlign: 'right', fontWeight: 700 }}>
+                                                        {isEditing ? (
+                                                          <input
+                                                            type="number"
+                                                            className="form-control"
+                                                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', textAlign: 'right', width: '110px', height: '1.8rem' }}
+                                                            value={editExpAmount}
+                                                            onChange={(e) => setEditExpAmount(e.target.value)}
+                                                          />
+                                                        ) : (
+                                                          exp.amount.toLocaleString() + "원"
+                                                        )}
+                                                      </td>
+                                                      <td style={{ textAlign: 'center' }}>
+                                                        {isEditing ? (
+                                                          <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'center' }}>
+                                                            <button
+                                                              className="btn btn-success"
+                                                              onClick={() => saveEditExp(exp.id, alloc.id)}
+                                                              style={{ padding: '0.15rem 0.4rem', fontSize: '0.75rem' }}
+                                                            >
+                                                              저장
+                                                            </button>
+                                                            <button
+                                                              className="btn btn-secondary"
+                                                              onClick={() => setEditingExpId(null)}
+                                                              style={{ padding: '0.15rem 0.4rem', fontSize: '0.75rem' }}
+                                                            >
+                                                              취소
+                                                            </button>
+                                                          </div>
+                                                        ) : (
+                                                          <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'center' }}>
+                                                            <button
+                                                              className="btn btn-primary"
+                                                              onClick={() => startEditExp(exp)}
+                                                              style={{ padding: '0.15rem 0.4rem', fontSize: '0.75rem' }}
+                                                            >
+                                                              수정
+                                                            </button>
+                                                            <button
+                                                              className="btn btn-danger"
+                                                              onClick={() => deleteExp(exp.id, alloc.id)}
+                                                              style={{ padding: '0.15rem 0.4rem', fontSize: '0.75rem' }}
+                                                            >
+                                                              삭제
+                                                            </button>
+                                                          </div>
+                                                        )}
+                                                      </td>
+                                                    </tr>
+                                                  );
+                                                })}
+                                              </tbody>
+                                            </table>
+                                          )}
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  )}
+                                  </Fragment>
                                 ))}
                               </tbody>
                             </table>

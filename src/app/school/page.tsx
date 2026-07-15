@@ -50,9 +50,9 @@ export default function SchoolDashboard() {
 
   // 지출 폼 입력값
   const [selectedAllocId, setSelectedAllocId] = useState("");
-  const [expenseCategory, setExpenseCategory] = useState("운영비");
+  const [expenseCategory, setExpenseCategory] = useState("");
   const [amount, setAmount] = useState("");
-  const [expenseDate, setExpenseDate] = useState(new Date().toISOString().substring(0, 10));
+  const [expenseDate, setExpenseDate] = useState("");
   const [description, setDescription] = useState("");
 
   // 자산취득성 교구 구입 경고 모달 상태
@@ -148,8 +148,8 @@ export default function SchoolDashboard() {
     if (e) e.preventDefault();
     setMessage(null);
 
-    if (!selectedAllocId || !expenseCategory || !amount || !expenseDate) {
-      setMessage({ type: "danger", text: "모든 필수 입력 값을 기입해 주세요." });
+    if (!selectedAllocId || !amount) {
+      setMessage({ type: "danger", text: "대상 세부 사업과 지출 금액은 필수 입력값입니다." });
       return;
     }
 
@@ -369,19 +369,23 @@ export default function SchoolDashboard() {
             {/* 지출내역 간편 입력 폼 */}
             {allocations.length > 0 && (
               <div className="glass-card" style={{ marginBottom: '2.5rem' }}>
-                <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '1.25rem', color: 'var(--text-contrast)' }}>
+                <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '0.25rem', color: 'var(--text-contrast)' }}>
                   지출 내역 간편 기입 (인라인)
                 </h2>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
+                  ※ 지출 비목, 지출(예정) 일자, 지출 세부 내용은 선택 입력 항목으로 필수 입력하지 않아도 등록 가능합니다.
+                </p>
                 
                 <form onSubmit={handleExpenseSubmit} className="inline-form">
                   <div className="form-group">
-                    <label className="form-label" htmlFor="allocSelect">대상 세부 사업</label>
+                    <label className="form-label" htmlFor="allocSelect">대상 세부 사업 <span style={{ color: '#ef4444' }}>(필수)</span></label>
                     <select
                       className="form-control"
                       id="allocSelect"
                       value={selectedAllocId}
                       onChange={(e) => setSelectedAllocId(e.target.value)}
                     >
+                      <option value="" disabled>-- 사업 선택 --</option>
                       {allocations.map((a) => (
                         <option key={a.id} value={a.id}>
                           [{a.project_code}] {a.project_name} ({a.funding_source})
@@ -391,24 +395,7 @@ export default function SchoolDashboard() {
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label" htmlFor="categorySelect">지출 비목</label>
-                    <select
-                      className="form-control"
-                      id="categorySelect"
-                      value={expenseCategory}
-                      onChange={(e) => setExpenseCategory(e.target.value)}
-                    >
-                      <option value="운영비">운영비</option>
-                      <option value="강사비">강사비 (50% 상한)</option>
-                      <option value="학생 주·부식비">학생 주·부식비 (10% 상한)</option>
-                      <option value="업무추진비">업무추진비 (공모사업 5%/30% 상한)</option>
-                      <option value="여비">여비</option>
-                      <option value="자산취득비">자산취득비 (10만원 이상 사전승인)</option>
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="expenseAmount">지출금액 (원)</label>
+                    <label className="form-label" htmlFor="expenseAmount">지출금액 (원) <span style={{ color: '#ef4444' }}>(필수)</span></label>
                     <input
                       className="form-control"
                       type="text"
@@ -421,24 +408,41 @@ export default function SchoolDashboard() {
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label" htmlFor="expenseDate">지출(예정) 일자</label>
+                    <label className="form-label" htmlFor="categorySelect">지출 비목 <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}>(선택)</span></label>
+                    <select
+                      className="form-control"
+                      id="categorySelect"
+                      value={expenseCategory}
+                      onChange={(e) => setExpenseCategory(e.target.value)}
+                    >
+                      <option value="">선택 안 함 (기본: 기타)</option>
+                      <option value="운영비">운영비</option>
+                      <option value="강사비">강사비 (50% 상한)</option>
+                      <option value="학생 주·부식비">학생 주·부식비 (10% 상한)</option>
+                      <option value="업무추진비">업무추진비 (동적 상한)</option>
+                      <option value="여비">여비</option>
+                      <option value="자산취득비">자산취득비 (10만원 이상 사전승인)</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="expenseDate">지출(예정) 일자 <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}>(선택)</span></label>
                     <input
                       className="form-control"
                       type="date"
                       id="expenseDate"
                       value={expenseDate}
                       onChange={(e) => setExpenseDate(e.target.value)}
-                      required
                     />
                   </div>
 
                   <div className="form-group" style={{ flex: 1.5 }}>
-                    <label className="form-label" htmlFor="description">지출 세부 내용</label>
+                    <label className="form-label" htmlFor="description">지출 세부 내용 <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}>(선택)</span></label>
                     <input
                       className="form-control"
                       type="text"
                       id="description"
-                      placeholder="적요 또는 사용 목적 기입"
+                      placeholder="적요 또는 사용 목적 (선택)"
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                     />
