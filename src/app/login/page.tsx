@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 
 const SCHOOLS_LIST = [
   "admin",
-  "여주교육지원청",
   // 초등학교 (23개)
   "가남초등학교", "강천초등학교", "금당초등학교", "능북초등학교", "능서초등학교",
   "대신초등학교", "매류초등학교", "문장초등학교", "북내초등학교", "상품초등학교",
@@ -18,7 +17,8 @@ const SCHOOLS_LIST = [
   "점동중학교", "창명여자중학교", "흥천중학교",
   // 고등학교 (9개)
   "경기관광고등학교", "대신고등학교", "세종고등학교", "여강고등학교", "여주고등학교",
-  "여주자영농업고등학교", "여주제일고등학교", "이포고등학교", "점동고등학교"
+  "여주자영농업고등학교", "여주제일고등학교", "이포고등학교", "점동고등학교",
+  "여주교육지원청"
 ];
 
 export default function LoginPage() {
@@ -39,14 +39,11 @@ export default function LoginPage() {
       return;
     }
 
-    // "여주교육지원청"을 선택한 경우 실제 DB의 "admin" 계정으로 매핑하여 요청
-    const finalLoginId = loginId.trim() === "여주교육지원청" ? "admin" : loginId.trim();
-
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ loginId: finalLoginId, password }),
+        body: JSON.stringify({ loginId: loginId.trim(), password }),
       });
 
       const data = await res.json();
