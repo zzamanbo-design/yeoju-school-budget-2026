@@ -63,6 +63,13 @@ export default function SchoolDashboard() {
   const [ticketTitle, setTicketTitle] = useState("");
   const [ticketContent, setTicketContent] = useState("");
 
+  // 지출 내역 수정 관련 상태
+  const [editingExpId, setEditingExpId] = useState<string | null>(null);
+  const [editExpCategory, setEditExpCategory] = useState("");
+  const [editExpAmount, setEditExpAmount] = useState("");
+  const [editExpDate, setEditExpDate] = useState("");
+  const [editExpDescription, setEditExpDescription] = useState("");
+
   // 데이터 로드
   const loadData = async () => {
     setLoading(true);
@@ -235,8 +242,51 @@ export default function SchoolDashboard() {
 
       setMessage({ type: "success", text: "지출 내역이 성공적으로 삭제 및 예산 복구되었습니다." });
       loadData();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 지출 내역 수정 관련 모드 진입
+  const startEditExp = (exp: any) => {
+    setEditingExpId(exp.id.toString());
+    setEditExpCategory(exp.expenseCategory);
+    setEditExpAmount(String(exp.amount));
+    setEditExpDate(exp.expenseDate);
+    setEditExpDescription(exp.description || "");
+  };
+
+  // 지출 내역 수정 API 요청 호출
+  const handleExpenseUpdate = async (expId: string | number, allocId: string | number) => {
+    if (!editExpAmount || Number(editExpAmount) <= 0) {
+      setMessage({ type: "danger", text: "올바른 지출 금액을 입력해 주세요." });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch("/api/school/expenditures", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: expId,
+          expenseCategory: editExpCategory,
+          amount: Number(editExpAmount),
+          expenseDate: editExpDate,
+          description: editExpDescription.trim(),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setMessage({ type: "danger", text: data.error || "지출 내역 수정에 실패했습니다." });
+      } else {
+        setMessage({ type: "success", text: "지출 내역이 정상적으로 수정 및 예산 반영되었습니다." });
+        setEditingExpId(null);
+        loadData();
+      }
     } catch {
-      setMessage({ type: "danger", text: "삭제 처리 중 서버 통신 오류가 발생했습니다." });
+      setMessage({ type: "danger", text: "지출 수정 중 서버 통신 에러가 발생했습니다." });
     } finally {
       setLoading(false);
     }
@@ -579,7 +629,7 @@ export default function SchoolDashboard() {
                     <th>지출 비목</th>
                     <th style={{ textAlign: 'right' }}>지출액</th>
                     <th>세부 용도/내역</th>
-                    <th style={{ textAlign: 'center' }}>삭제</th>
+                    <th style={{ textAlign: 'center' }}>관리</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -590,31 +640,115 @@ export default function SchoolDashboard() {
                       </td>
                     </tr>
                   ) : (
-                    expenditures.map((e) => (
-                      <tr key={e.id}>
-                        <td>{e.expenseDate}</td>
-                        <td className="project-code">{e.projectCode}</td>
-                        <td style={{ fontWeight: 600 }}>{e.projectName}</td>
-                        <td>
-                          <span className="user-badge" style={{ background: 'rgba(255, 255, 255, 0.05)', color: 'var(--text-primary)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                            {e.expenseCategory}
-                          </span>
-                        </td>
-                        <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--text-contrast)' }}>
-                          {e.amount.toLocaleString()}원
-                        </td>
-                        <td style={{ color: 'var(--text-secondary)' }}>{e.description || "-"}</td>
-                        <td style={{ textAlign: 'center' }}>
-                          <button
-                            className="btn btn-danger"
-                            onClick={() => handleExpenseDelete(e.id, e.description || "")}
-                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
-                          >
-                            삭제
-                          </button>
-                        </td>
-                      </tr>
-                    ))
+                    expenditures.map((e) => {
+                      const isEditing = editingExpId === e.id.toString();
+                      return (
+                        <tr key={e.id}>
+                          <td>
+                            {isEditing ? (
+                              <input
+                                type="date"
+                                className="form-control"
+                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.85rem', width: '130px', height: '2.1rem' }}
+                                value={editExpDate}
+                                onChange={(evt) => setEditExpDate(evt.target.value)}
+                              />
+                            ) : (
+                              e.expenseDate
+                            )}
+                          </td>
+                          <td className="project-code">{e.projectCode}</td>
+                          <td style={{ fontWeight: 600 }}>{e.projectName}</td>
+                          <td>
+                            {isEditing ? (
+                              <select
+                                className="form-control"
+                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.85rem', width: '150px', height: '2.1rem' }}
+                                value={editExpCategory}
+                                onChange={(evt) => setEditExpCategory(evt.target.value)}
+                              >
+                                <option value="운영비">운영비</option>
+                                <option value="강사비">강사비 (50% 상한)</option>
+                                <option value="학생 주·부식비">학생 주·부식비 (10% 상한)</option>
+                                <option value="업무추진비">업무추진비 (동적 상한)</option>
+                                <option value="여비">여비</option>
+                                <option value="자산취득비">자산취득비</option>
+                                <option value="기타">기타</option>
+                              </select>
+                            ) : (
+                              <span className="user-badge" style={{ background: 'rgba(255, 255, 255, 0.05)', color: 'var(--text-primary)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                {e.expenseCategory}
+                              </span>
+                            )}
+                          </td>
+                          <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--text-contrast)' }}>
+                            {isEditing ? (
+                              <input
+                                type="number"
+                                className="form-control"
+                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.85rem', textAlign: 'right', width: '110px', height: '2.1rem' }}
+                                value={editExpAmount}
+                                onChange={(evt) => setEditExpAmount(evt.target.value)}
+                              />
+                            ) : (
+                              e.amount.toLocaleString() + "원"
+                            )}
+                          </td>
+                          <td style={{ color: 'var(--text-secondary)' }}>
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                className="form-control"
+                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.85rem', height: '2.1rem' }}
+                                value={editExpDescription}
+                                onChange={(evt) => setEditExpDescription(evt.target.value)}
+                              />
+                            ) : (
+                              e.description || "-"
+                            )}
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            {isEditing ? (
+                              <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'center' }}>
+                                <button
+                                  className="btn btn-success"
+                                  onClick={() => handleExpenseUpdate(e.id, e.allocationId)}
+                                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                                  disabled={loading}
+                                >
+                                  저장
+                                </button>
+                                <button
+                                  className="btn btn-secondary"
+                                  onClick={() => setEditingExpId(null)}
+                                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                                  disabled={loading}
+                                >
+                                  취소
+                                </button>
+                              </div>
+                            ) : (
+                              <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'center' }}>
+                                <button
+                                  className="btn btn-primary"
+                                  onClick={() => startEditExp(e)}
+                                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                                >
+                                  수정
+                                </button>
+                                <button
+                                  className="btn btn-danger"
+                                  onClick={() => handleExpenseDelete(e.id, e.description || "")}
+                                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                                >
+                                  삭제
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
