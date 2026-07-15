@@ -305,8 +305,8 @@ export default function SchoolDashboard() {
         <div className="header-inner">
           <div className="logo-group">
             <img src="/logo-circle.png" alt="경기도여주교육지원청" className="header-logo-img" />
-            <div className="logo-text">경기공유학교 학교맞춤형 예산관리</div>
-            <div className="user-badge">학교 사용자</div>
+            <div className="logo-text">여주 경기공유학교 학교맞춤형 예산지원센터</div>
+            <div className="user-badge">{schoolName || "학교 사용자"}</div>
           </div>
           <div className="nav-group">
             <button className="btn btn-secondary" onClick={handleLogout} style={{ padding: '0.5rem 1rem' }}>

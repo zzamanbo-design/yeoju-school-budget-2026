@@ -78,32 +78,30 @@ export default function LoginPage() {
           <div className="login-logo-container">
             <img src="/logo-horizontal.jpg" alt="경기도여주교육지원청" className="login-logo-img" />
           </div>
-          <h1 className="login-title">경기공유학교 예산시스템</h1>
-          <p className="login-subtitle">2026 여주미래교육협력지구 학교맞춤형</p>
+          <h1 className="login-title">여주 경기공유학교</h1>
+          <p className="login-subtitle">학교맞춤형 예산지원센터</p>
         </div>
 
         {error && <div className="alert alert-danger">{error}</div>}
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="form-label" htmlFor="loginId">학교명 (또는 관리자 ID)</label>
-            <input
+            <label className="form-label" htmlFor="loginId">학교명 선택 (또는 관리자 ID)</label>
+            <select
               className="form-control"
-              type="text"
               id="loginId"
-              list="schools"
-              placeholder="학교명을 선택하거나 입력하세요"
               value={loginId}
               onChange={(e) => setLoginId(e.target.value)}
               disabled={loading}
-              autoComplete="off"
               required
-            />
-            <datalist id="schools">
+            >
+              <option value="" disabled>-- 학교명을 선택해 주세요 --</option>
               {SCHOOLS_LIST.map((school) => (
-                <option key={school} value={school} />
+                <option key={school} value={school}>
+                  {school}
+                </option>
               ))}
-            </datalist>
+            </select>
           </div>
 
           <div className="form-group" style={{ marginBottom: '2rem' }}>
