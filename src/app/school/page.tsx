@@ -4,8 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 interface Allocation {
-  id: number;
-  school_id: number;
+  id: string | number;
+  school_id: string | number;
   project_code: string;
   project_name: string;
   funding_source: string;
@@ -15,8 +15,8 @@ interface Allocation {
 }
 
 interface Expenditure {
-  id: number;
-  allocationId: number;
+  id: string | number;
+  allocationId: string | number;
   projectCode: string;
   projectName: string;
   fundingSource: string;
@@ -27,7 +27,7 @@ interface Expenditure {
 }
 
 interface Ticket {
-  id: number;
+  id: string | number;
   title: string;
   content: string;
   status: "OPEN" | "RESOLVED";
@@ -181,7 +181,7 @@ export default function SchoolDashboard() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          allocationId: parseInt(selectedAllocId, 10),
+          allocationId: selectedAllocId,
           expenseCategory,
           amount: parsedAmount,
           expenseDate,
@@ -211,7 +211,7 @@ export default function SchoolDashboard() {
   };
 
   // 지출 내역 삭제
-  const handleExpenseDelete = async (id: number, desc: string) => {
+  const handleExpenseDelete = async (id: string | number, desc: string) => {
     if (!confirm(`선택한 지출 내역을 삭제하시겠습니까? 예산 한도가 즉시 복구됩니다.`)) {
       return;
     }
