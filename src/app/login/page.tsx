@@ -33,17 +33,20 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
-    if (!loginId.trim() || !password.trim()) {
-      setError("학교명 또는 비밀번호가 올바르지 않습니다.");
+    if (!loginId || !password) {
+      setError("학교명과 비밀번호를 모두 입력해 주세요.");
       setLoading(false);
       return;
     }
+
+    // "여주교육지원청"을 선택한 경우 실제 DB의 "admin" 계정으로 매핑하여 요청
+    const finalLoginId = loginId.trim() === "여주교육지원청" ? "admin" : loginId.trim();
 
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ loginId: loginId.trim(), password }),
+        body: JSON.stringify({ loginId: finalLoginId, password }),
       });
 
       const data = await res.json();
