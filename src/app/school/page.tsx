@@ -70,10 +70,15 @@ export default function SchoolDashboard() {
       // 내 예산 및 지출 데이터 가져오기
       const resBudget = await fetch("/api/school/budget");
       const dataBudget = await resBudget.json();
-      if (resBudget.ok && dataBudget.allocations) {
-        setAllocations(dataBudget.allocations);
-        if (dataBudget.allocations.length > 0 && !selectedAllocId) {
-          setSelectedAllocId(dataBudget.allocations[0].id.toString());
+      if (resBudget.ok) {
+        if (dataBudget.schoolName) {
+          setSchoolName(dataBudget.schoolName);
+        }
+        if (dataBudget.allocations) {
+          setAllocations(dataBudget.allocations);
+          if (dataBudget.allocations.length > 0 && !selectedAllocId) {
+            setSelectedAllocId(dataBudget.allocations[0].id.toString());
+          }
         }
       }
 

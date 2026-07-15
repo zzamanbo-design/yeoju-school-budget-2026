@@ -70,7 +70,11 @@ export async function GET(request: NextRequest) {
     // 정렬 (사업코드 기준 오름차순)
     allocationsList.sort((a, b) => a.project_code.localeCompare(b.project_code));
 
-    return NextResponse.json({ success: true, allocations: allocationsList });
+    return NextResponse.json({
+      success: true,
+      schoolName: schoolId,
+      allocations: allocationsList
+    });
   } catch (err) {
     console.error("GET school budget error:", err);
     return NextResponse.json(
