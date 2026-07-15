@@ -65,6 +65,7 @@ export default function SchoolDashboard() {
 
   // 지출 내역 수정 관련 상태
   const [editingExpId, setEditingExpId] = useState<string | null>(null);
+  const [editExpAllocationId, setEditExpAllocationId] = useState("");
   const [editExpCategory, setEditExpCategory] = useState("");
   const [editExpAmount, setEditExpAmount] = useState("");
   const [editExpDate, setEditExpDate] = useState("");
@@ -250,6 +251,7 @@ export default function SchoolDashboard() {
   // 지출 내역 수정 관련 모드 진입
   const startEditExp = (exp: any) => {
     setEditingExpId(exp.id.toString());
+    setEditExpAllocationId(exp.allocationId.toString());
     setEditExpCategory(exp.expenseCategory);
     setEditExpAmount(String(exp.amount));
     setEditExpDate(exp.expenseDate);
@@ -270,6 +272,7 @@ export default function SchoolDashboard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: expId,
+          allocationId: editExpAllocationId,
           expenseCategory: editExpCategory,
           amount: Number(editExpAmount),
           expenseDate: editExpDate,
@@ -525,8 +528,13 @@ export default function SchoolDashboard() {
                 <div className="balance-grid">
                   {requiredAllocations.map((alloc) => {
                     const { totalAllocated, totalSpent, remaining, spentPercent } = getBudgetDetails(alloc);
+                    const isActive = selectedAllocId === alloc.id.toString();
                     return (
-                      <div key={alloc.id} className="glass-card balance-card required">
+                      <div 
+                        key={alloc.id} 
+                        className={`glass-card balance-card required ${isActive ? "active" : ""}`}
+                        onClick={() => setSelectedAllocId(isActive ? "" : alloc.id.toString())}
+                      >
                         <div className="card-header-row">
                           <span className="project-tag required">필수 사업</span>
                           <span className="project-code">{alloc.project_code}</span>
@@ -576,8 +584,13 @@ export default function SchoolDashboard() {
                 <div className="balance-grid">
                   {contestAllocations.map((alloc) => {
                     const { totalAllocated, totalSpent, remaining, spentPercent } = getBudgetDetails(alloc);
+                    const isActive = selectedAllocId === alloc.id.toString();
                     return (
-                      <div key={alloc.id} className="glass-card balance-card contest">
+                      <div 
+                        key={alloc.id} 
+                        className={`glass-card balance-card contest ${isActive ? "active" : ""}`}
+                        onClick={() => setSelectedAllocId(isActive ? "" : alloc.id.toString())}
+                      >
                         <div className="card-header-row">
                           <span className="project-tag contest">공모 사업</span>
                           <span className="project-code">{alloc.project_code}</span>
@@ -611,6 +624,191 @@ export default function SchoolDashboard() {
                 </div>
               )}
             </div>
+
+            {/* 선택한 사업의 지출 내역 목록 표시 */}
+            {selectedAllocId && (
+              <div className="glass-card" style={{ marginTop: '2rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                  <h2 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>
+                    [{allocations.find(a => a.id.toString() === selectedAllocId)?.project_code}] {' '}
+                    <span style={{ color: 'var(--primary-light)' }}>
+                      {allocations.find(a => a.id.toString() === selectedAllocId)?.project_name}
+                    </span>{' '}
+                    지출 내역 목록
+                  </h2>
+                  <button 
+                    className="btn btn-secondary" 
+                    onClick={() => setSelectedAllocId("")} 
+                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                  >
+                    닫기
+                  </button>
+                </div>
+
+                <div className="table-container">
+                  <table className="premium-table">
+                    <thead>
+                      <tr>
+                        <th>지출 일자</th>
+                        <th>사업 코드</th>
+                        <th>세부 사업명</th>
+                        <th>지출 비목</th>
+                        <th style={{ textAlign: 'right' }}>지출액</th>
+                        <th>세부 용도/내역</th>
+                        <th style={{ textAlign: 'center' }}>관리</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(() => {
+                        const filteredExps = expenditures.filter(e => e.allocationId.toString() === selectedAllocId);
+                        if (filteredExps.length === 0) {
+                          return (
+                            <tr>
+                              <td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2.5rem' }}>
+                                이 사업에 등록된 지출 내역이 없습니다. 위 간편 기입 양식에서 지출을 등록해 보세요.
+                              </td>
+                            </tr>
+                          );
+                        }
+                        return filteredExps.map((e) => {
+                          const isEditing = editingExpId === e.id.toString();
+                          return (
+                            <tr key={e.id}>
+                              <td>
+                                {isEditing ? (
+                                  <input
+                                    type="date"
+                                    className="form-control"
+                                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.85rem', width: '130px', height: '2.1rem' }}
+                                    value={editExpDate}
+                                    onChange={(evt) => setEditExpDate(evt.target.value)}
+                                  />
+                                ) : (
+                                  e.expenseDate
+                                )}
+                              </td>
+                              <td className="project-code">
+                                {isEditing ? (
+                                  allocations.find((a) => a.id.toString() === editExpAllocationId)?.project_code || ""
+                                ) : (
+                                  e.projectCode
+                                )}
+                              </td>
+                              <td style={{ fontWeight: 600 }}>
+                                {isEditing ? (
+                                  <select
+                                    className="form-control"
+                                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.85rem', width: '220px', height: '2.1rem' }}
+                                    value={editExpAllocationId}
+                                    onChange={(evt) => setEditExpAllocationId(evt.target.value)}
+                                  >
+                                    {allocations.map((alloc) => (
+                                      <option key={alloc.id} value={alloc.id}>
+                                        {alloc.project_name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  e.projectName
+                                )}
+                              </td>
+                              <td>
+                                {isEditing ? (
+                                  <select
+                                    className="form-control"
+                                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.85rem', width: '150px', height: '2.1rem' }}
+                                    value={editExpCategory}
+                                    onChange={(evt) => setEditExpCategory(evt.target.value)}
+                                  >
+                                    <option value="운영비">운영비</option>
+                                    <option value="강사비">강사비 (50% 상한)</option>
+                                    <option value="학생 주·부식비">학생 주·부식비 (10% 상한)</option>
+                                    <option value="업무추진비">업무추진비 (동적 상한)</option>
+                                    <option value="여비">여비</option>
+                                    <option value="자산취득비">자산취득비</option>
+                                    <option value="기타">기타</option>
+                                  </select>
+                                ) : (
+                                  <span className="user-badge" style={{ background: 'rgba(255, 255, 255, 0.05)', color: 'var(--text-primary)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                    {e.expenseCategory}
+                                  </span>
+                                )}
+                              </td>
+                              <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--text-contrast)' }}>
+                                {isEditing ? (
+                                  <input
+                                    type="number"
+                                    className="form-control"
+                                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.85rem', textAlign: 'right', width: '110px', height: '2.1rem' }}
+                                    value={editExpAmount}
+                                    onChange={(evt) => setEditExpAmount(evt.target.value)}
+                                  />
+                                ) : (
+                                  e.amount.toLocaleString() + "원"
+                                )}
+                              </td>
+                              <td style={{ color: 'var(--text-secondary)' }}>
+                                {isEditing ? (
+                                  <input
+                                    type="text"
+                                    className="form-control"
+                                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.85rem', height: '2.1rem' }}
+                                    value={editExpDescription}
+                                    onChange={(evt) => setEditExpDescription(evt.target.value)}
+                                  />
+                                ) : (
+                                  e.description || "-"
+                                )}
+                              </td>
+                              <td style={{ textAlign: 'center' }}>
+                                {isEditing ? (
+                                  <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'center' }}>
+                                    <button
+                                      className="btn btn-success"
+                                      onClick={() => handleExpenseUpdate(e.id, e.allocationId)}
+                                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                                      disabled={loading}
+                                    >
+                                      저장
+                                    </button>
+                                    <button
+                                      className="btn btn-secondary"
+                                      onClick={() => setEditingExpId(null)}
+                                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                                      disabled={loading}
+                                    >
+                                      취소
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'center' }}>
+                                    <button
+                                      className="btn btn-primary"
+                                      onClick={() => startEditExp(e)}
+                                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                                    >
+                                      수정
+                                    </button>
+                                    <button
+                                      className="btn btn-danger"
+                                      onClick={() => handleExpenseDelete(e.id, e.description || "")}
+                                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                                    >
+                                      삭제
+                                    </button>
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        });
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
           </div>
         )}
 
@@ -657,8 +855,31 @@ export default function SchoolDashboard() {
                               e.expenseDate
                             )}
                           </td>
-                          <td className="project-code">{e.projectCode}</td>
-                          <td style={{ fontWeight: 600 }}>{e.projectName}</td>
+                          <td className="project-code">
+                            {isEditing ? (
+                              allocations.find((a) => a.id.toString() === editExpAllocationId)?.project_code || ""
+                            ) : (
+                              e.projectCode
+                            )}
+                          </td>
+                          <td style={{ fontWeight: 600 }}>
+                            {isEditing ? (
+                              <select
+                                className="form-control"
+                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.85rem', width: '220px', height: '2.1rem' }}
+                                value={editExpAllocationId}
+                                onChange={(evt) => setEditExpAllocationId(evt.target.value)}
+                              >
+                                {allocations.map((alloc) => (
+                                  <option key={alloc.id} value={alloc.id}>
+                                    {alloc.project_name}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              e.projectName
+                            )}
+                          </td>
                           <td>
                             {isEditing ? (
                               <select

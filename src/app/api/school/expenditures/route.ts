@@ -229,7 +229,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const { id, expenseCategory, amount, expenseDate, description } = await request.json();
+    const { id, allocationId, expenseCategory, amount, expenseDate, description } = await request.json();
 
     if (!id || amount === undefined) {
       return NextResponse.json(
@@ -267,10 +267,11 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const allocationId = expenditure.allocation_id;
+    const oldAllocationId = expenditure.allocation_id;
+    const targetAllocationId = allocationId || oldAllocationId;
 
     // 2) 배정 예산 정보 조회
-    const allocRef = doc(db, "allocations", allocationId);
+    const allocRef = doc(db, "allocations", targetAllocationId);
     const allocSnap = await getDoc(allocRef);
 
     if (!allocSnap.exists()) {
@@ -283,7 +284,7 @@ export async function PUT(request: NextRequest) {
     const allocation = allocSnap.data();
 
     // 3) 다른 지출 내역들 가져오기 (현재 수정 건 제외)
-    const expQuery = query(collection(db, "expenditures"), where("allocation_id", "==", allocationId));
+    const expQuery = query(collection(db, "expenditures"), where("allocation_id", "==", targetAllocationId));
     const allExpsSnap = await getDocs(expQuery);
     
     const existingExpenditures: any[] = [];
@@ -321,6 +322,7 @@ export async function PUT(request: NextRequest) {
 
     // 5) 업데이트 실행
     await updateDoc(expRef, {
+      allocation_id: targetAllocationId,
       expense_category: category,
       amount: parsedAmount,
       expense_date: date,
