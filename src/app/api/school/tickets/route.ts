@@ -26,6 +26,8 @@ export async function GET(request: NextRequest) {
       ticketsList.push({
         id: docSnap.id,
         school_id: t.school_name,
+        requester_name: t.requester_name,
+        contact_info: t.contact_info,
         title: t.title,
         content: t.content,
         status: t.status,
@@ -60,11 +62,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { title, content } = await request.json();
+    const { title, content, requester_name, contact_info } = await request.json();
 
-    if (!title || !content) {
+    if (!title || !content || !requester_name || !contact_info) {
       return NextResponse.json(
-        { error: "제목과 문의 내용을 모두 입력해 주세요." },
+        { error: "작성자 이름, 연락처, 제목, 문의 내용을 모두 입력해 주세요." },
         { status: 400 }
       );
     }
@@ -73,6 +75,8 @@ export async function POST(request: NextRequest) {
 
     const newTicket = {
       school_name: String(schoolId),
+      requester_name,
+      contact_info,
       title,
       content,
       status: "OPEN",

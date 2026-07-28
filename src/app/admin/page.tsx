@@ -19,6 +19,8 @@ interface Ticket {
   id: number;
   schoolId: number;
   schoolName: string;
+  requesterName?: string;
+  contactInfo?: string;
   title: string;
   content: string;
   status: "OPEN" | "RESOLVED";
@@ -58,6 +60,7 @@ export default function AdminDashboard() {
   // 지출내역 상세 수정 관련 상태
   const [editingExpId, setEditingExpId] = useState<string | null>(null);
   const [editExpCategory, setEditExpCategory] = useState("");
+  const [editingTicketId, setEditingTicketId] = useState<string | number | null>(null);
   const [editExpAmount, setEditExpAmount] = useState("");
   const [editExpDate, setEditExpDate] = useState("");
   const [editExpDescription, setEditExpDescription] = useState("");
@@ -393,12 +396,18 @@ export default function AdminDashboard() {
         delete copy[ticketId];
         return copy;
       });
+      setEditingTicketId(null);
       setMessage({ type: "success", text: "지원요청 답변이 성공적으로 등록되었습니다." });
     } catch {
       setMessage({ type: "danger", text: "답변 등록 중 서버 오류가 발생했습니다." });
     } finally {
       setLoading(false);
     }
+  };
+
+  const startEditTicket = (ticket: any) => {
+    setEditingTicketId(ticket.id);
+    setTicketAnswers((prev) => ({ ...prev, [ticket.id]: ticket.answer || "" }));
   };
 
   // 아코디언 토글 헬퍼
@@ -942,9 +951,9 @@ export default function AdminDashboard() {
                                                             onChange={(e) => setEditExpCategory(e.target.value)}
                                                           >
                                                             <option value="운영비">운영비</option>
-                                                            <option value="강사비">강사비 (50% 상한)</option>
-                                                            <option value="학생 주·부식비">학생 주·부식비 (10% 상한)</option>
-                                                            <option value="업무추진비">업무추진비 (동적 상한)</option>
+                                                            <option value="강사비">강사비</option>
+                                                            <option value="학생 주·부식비">학생 주·부식비</option>
+                                                            <option value="업무추진비">업무추진비</option>
                                                             <option value="여비">여비</option>
                                                             <option value="자산취득비">자산취득비</option>
                                                             <option value="기타">기타</option>
@@ -1170,14 +1179,24 @@ export default function AdminDashboard() {
                     <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--text-contrast)' }}>
                       {ticket.title}
                     </h3>
+                    {ticket.requesterName && (
+                      <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+                        작성자: {ticket.requesterName} / 연락처: {ticket.contactInfo}
+                      </div>
+                    )}
                     <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginBottom: '1.5rem', whiteSpace: 'pre-wrap' }}>
                       {ticket.content}
                     </p>
 
-                    {ticket.status === "RESOLVED" ? (
+                    {ticket.status === "RESOLVED" && editingTicketId !== ticket.id ? (
                       <div style={{ background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.2)', padding: '1rem', borderRadius: '8px' }}>
-                        <div style={{ fontWeight: 700, color: 'var(--success)', fontSize: '0.85rem', marginBottom: '0.25rem' }}>
-                          교육지원청 답변 ({new Date(ticket.answeredAt || '').toLocaleDateString()})
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                          <div style={{ fontWeight: 700, color: 'var(--success)', fontSize: '0.85rem' }}>
+                            교육지원청 답변 ({new Date(ticket.answeredAt || '').toLocaleDateString()})
+                          </div>
+                          <button className="btn btn-secondary" onClick={() => startEditTicket(ticket)} style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}>
+                            수정
+                          </button>
                         </div>
                         <p style={{ color: 'var(--text-primary)', fontSize: '0.9rem', whiteSpace: 'pre-wrap' }}>{ticket.answer}</p>
                       </div>
@@ -1192,9 +1211,14 @@ export default function AdminDashboard() {
                             setTicketAnswers((prev) => ({ ...prev, [ticket.id]: e.target.value }))
                           }
                         />
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem', gap: '0.5rem' }}>
+                          {editingTicketId === ticket.id && (
+                            <button className="btn btn-secondary" onClick={() => setEditingTicketId(null)} style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}>
+                              취소
+                            </button>
+                          )}
                           <button className="btn btn-success" onClick={() => submitAnswer(ticket.id)} style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}>
-                            답변 등록
+                            {editingTicketId === ticket.id ? "답변 수정" : "답변 등록"}
                           </button>
                         </div>
                       </div>

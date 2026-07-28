@@ -28,6 +28,8 @@ interface Expenditure {
 
 interface Ticket {
   id: string | number;
+  requester_name?: string;
+  contact_info?: string;
   title: string;
   content: string;
   status: "OPEN" | "RESOLVED";
@@ -62,6 +64,8 @@ export default function SchoolDashboard() {
   // 1:1 티켓 입력값
   const [ticketTitle, setTicketTitle] = useState("");
   const [ticketContent, setTicketContent] = useState("");
+  const [requesterName, setRequesterName] = useState("");
+  const [contactInfo, setContactInfo] = useState("");
 
   // 지출 내역 수정 관련 상태
   const [editingExpId, setEditingExpId] = useState<string | null>(null);
@@ -170,6 +174,34 @@ export default function SchoolDashboard() {
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
       setMessage({ type: "danger", text: "올바른 지출 금액을 입력해 주세요." });
       return;
+    }
+
+    const alloc = allocations.find(a => a.id.toString() === selectedAllocId);
+    if (alloc) {
+      const isSnack = expenseCategory === "학생 주·부식비" || expenseCategory === "주·부식비" || expenseCategory === "학생 주부식비";
+      
+      if (expenseCategory === "강사비") {
+        const lecturerSpent = alloc.expenditures?.filter((ex: any) => ex.expense_category === "강사비").reduce((sum: number, ex: any) => sum + ex.amount, 0) || 0;
+        const limit = alloc.allocated_amount * 0.5;
+        if (lecturerSpent + parsedAmount > limit) {
+          if (!window.confirm("강사비는 50%를 초과할 수 없습니다. 현재 입력하려는 내용이 맞습니까?\n금액을 나누기 어려우면 '기타'로 입력하세요.")) return;
+        }
+      } else if (isSnack) {
+        const snackSpent = alloc.expenditures?.filter((ex: any) => ex.expense_category === "학생 주·부식비" || ex.expense_category === "주·부식비" || ex.expense_category === "학생 주부식비").reduce((sum: number, ex: any) => sum + ex.amount, 0) || 0;
+        const limit = alloc.allocated_amount * 0.1;
+        if (snackSpent + parsedAmount > limit) {
+          if (!window.confirm("학생 주·부식비는 10%를 초과할 수 없습니다. 현재 입력하려는 내용이 맞습니까?\n금액을 나누기 어려우면 '기타'로 입력하세요.")) return;
+        }
+      } else if (expenseCategory === "업무추진비" && alloc.project_type === "공모") {
+        const execSpent = alloc.expenditures?.filter((ex: any) => ex.expense_category === "업무추진비").reduce((sum: number, ex: any) => sum + ex.amount, 0) || 0;
+        let limitPercent = 5;
+        if (alloc.project_code === "113") limitPercent = 30;
+        else if (alloc.project_code === "112") limitPercent = 5;
+        const limit = alloc.allocated_amount * (limitPercent / 100);
+        if (execSpent + parsedAmount > limit) {
+          if (!window.confirm(`공모 사업의 업무추진비는 ${limitPercent}%를 초과할 수 없습니다. 현재 입력하려는 내용이 맞습니까?\n금액을 나누기 어려우면 '기타'로 입력하세요.`)) return;
+        }
+      }
     }
 
     // [사전 조건 검증] 자산취득성 교구 구입 경고 팝업 검사
@@ -300,8 +332,8 @@ export default function SchoolDashboard() {
     e.preventDefault();
     setMessage(null);
 
-    if (!ticketTitle.trim() || !ticketContent.trim()) {
-      setMessage({ type: "danger", text: "제목과 문의 내용을 모두 작성해 주세요." });
+    if (!ticketTitle.trim() || !ticketContent.trim() || !requesterName.trim() || !contactInfo.trim()) {
+      setMessage({ type: "danger", text: "작성자 이름, 연락처, 제목, 문의 내용을 모두 작성해 주세요." });
       return;
     }
 
@@ -310,7 +342,12 @@ export default function SchoolDashboard() {
       const res = await fetch("/api/school/tickets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: ticketTitle.trim(), content: ticketContent.trim() }),
+        body: JSON.stringify({ 
+          title: ticketTitle.trim(), 
+          content: ticketContent.trim(),
+          requester_name: requesterName.trim(),
+          contact_info: contactInfo.trim()
+        }),
       });
 
       if (!res.ok) {
@@ -322,6 +359,8 @@ export default function SchoolDashboard() {
       setMessage({ type: "success", text: "1:1 문의사항이 성공적으로 등록되었습니다. 관리자가 확인 후 답변 예정입니다." });
       setTicketTitle("");
       setTicketContent("");
+      setRequesterName("");
+      setContactInfo("");
       loadData();
     } catch {
       setMessage({ type: "danger", text: "문의 등록 처리 중 서버 통신 오류가 발생했습니다." });
@@ -475,9 +514,9 @@ export default function SchoolDashboard() {
                     >
                       <option value="">선택 안 함 (기본: 기타)</option>
                       <option value="운영비">운영비</option>
-                      <option value="강사비">강사비 (50% 상한)</option>
-                      <option value="학생 주·부식비">학생 주·부식비 (10% 상한)</option>
-                      <option value="업무추진비">업무추진비 (동적 상한)</option>
+                      <option value="강사비">강사비</option>
+                      <option value="학생 주·부식비">학생 주·부식비</option>
+                      <option value="업무추진비">업무추진비</option>
                       <option value="여비">여비</option>
                       <option value="자산취득비">자산취득비 (10만원 이상 사전승인)</option>
                     </select>
@@ -721,9 +760,9 @@ export default function SchoolDashboard() {
                                     onChange={(evt) => setEditExpCategory(evt.target.value)}
                                   >
                                     <option value="운영비">운영비</option>
-                                    <option value="강사비">강사비 (50% 상한)</option>
-                                    <option value="학생 주·부식비">학생 주·부식비 (10% 상한)</option>
-                                    <option value="업무추진비">업무추진비 (동적 상한)</option>
+                                    <option value="강사비">강사비</option>
+                                    <option value="학생 주·부식비">학생 주·부식비</option>
+                                    <option value="업무추진비">업무추진비</option>
                                     <option value="여비">여비</option>
                                     <option value="자산취득비">자산취득비</option>
                                     <option value="기타">기타</option>
@@ -889,9 +928,9 @@ export default function SchoolDashboard() {
                                 onChange={(evt) => setEditExpCategory(evt.target.value)}
                               >
                                 <option value="운영비">운영비</option>
-                                <option value="강사비">강사비 (50% 상한)</option>
-                                <option value="학생 주·부식비">학생 주·부식비 (10% 상한)</option>
-                                <option value="업무추진비">업무추진비 (동적 상한)</option>
+                                <option value="강사비">강사비</option>
+                                <option value="학생 주·부식비">학생 주·부식비</option>
+                                <option value="업무추진비">업무추진비</option>
                                 <option value="여비">여비</option>
                                 <option value="자산취득비">자산취득비</option>
                                 <option value="기타">기타</option>
@@ -985,6 +1024,33 @@ export default function SchoolDashboard() {
               <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '1.25rem' }}>새로운 애로사항/예산 승인 신청</h2>
               
               <form onSubmit={handleTicketSubmit}>
+                <div className="form-group" style={{ display: "flex", gap: "1rem" }}>
+                  <div style={{ flex: 1 }}>
+                    <label className="form-label" htmlFor="requesterName">작성자 이름</label>
+                    <input
+                      className="form-control"
+                      type="text"
+                      id="requesterName"
+                      placeholder="예: 홍길동 교사"
+                      value={requesterName}
+                      onChange={(e) => setRequesterName(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label className="form-label" htmlFor="contactInfo">연락처</label>
+                    <input
+                      className="form-control"
+                      type="text"
+                      id="contactInfo"
+                      placeholder="예: 010-1234-5678"
+                      value={contactInfo}
+                      onChange={(e) => setContactInfo(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+
                 <div className="form-group">
                   <label className="form-label" htmlFor="ticketTitle">제목</label>
                   <input

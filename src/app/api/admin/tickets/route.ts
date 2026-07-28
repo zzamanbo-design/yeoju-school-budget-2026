@@ -25,6 +25,8 @@ export async function GET(request: NextRequest) {
         id: ticketDoc.id,
         schoolId: t.school_name,
         schoolName: t.school_name || "알 수 없음",
+        requesterName: t.requester_name || "",
+        contactInfo: t.contact_info || "",
         title: t.title,
         content: t.content,
         status: t.status,
