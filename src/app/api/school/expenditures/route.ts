@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/firebase";
-import { collection, getDocs, doc, getDoc, addDoc, updateDoc, deleteDoc, query, where } from "firebase/firestore";
+import { adminDb as db } from "@/lib/firebase-admin";
 import { getSession } from "@/lib/auth";
 import { validateExpenditure } from "@/lib/validation";
 
@@ -21,11 +20,10 @@ export async function GET(request: NextRequest) {
 
     // 관리자가 특정 배정 예산(allocationId)의 지출 세부 내역을 조회하는 경우
     if (session.role === "admin" && allocationId) {
-      const expQuery = query(collection(db, "expenditures"), where("allocation_id", "==", allocationId));
-      const expSnap = await getDocs(expQuery);
+      const expSnap = await db.collection("expenditures").where("allocation_id", "==", allocationId).get();
 
       const formatted: any[] = [];
-      expSnap.forEach((expDoc) => {
+      expSnap.forEach((expDoc: any) => {
         const e = expDoc.data();
         formatted.push({
           id: expDoc.id,
@@ -50,24 +48,22 @@ export async function GET(request: NextRequest) {
     }
 
     // 1) 학교의 allocations 전체 가져오기
-    const allocQuery = query(collection(db, "allocations"), where("school_name", "==", String(schoolId)));
-    const allocSnap = await getDocs(allocQuery);
+    const allocSnap = await db.collection("allocations").where("school_name", "==", String(schoolId)).get();
 
     if (allocSnap.empty) {
       return NextResponse.json({ success: true, expenditures: [] });
     }
 
     const allocMap = new Map<string, any>();
-    allocSnap.forEach((allocDoc) => {
+    allocSnap.forEach((allocDoc: any) => {
       allocMap.set(allocDoc.id, allocDoc.data());
     });
 
     // 2) 학교의 expenditures 전체 가져오기
-    const expQuery = query(collection(db, "expenditures"), where("school_name", "==", String(schoolId)));
-    const expSnap = await getDocs(expQuery);
+    const expSnap = await db.collection("expenditures").where("school_name", "==", String(schoolId)).get();
 
     const formatted: any[] = [];
-    expSnap.forEach((expDoc) => {
+    expSnap.forEach((expDoc: any) => {
       const e = expDoc.data();
       const alloc = allocMap.get(e.allocation_id);
       formatted.push({
@@ -130,17 +126,17 @@ export async function POST(request: NextRequest) {
     }
 
     // 1. 해당 배정 예산 정보 조회
-    const allocRef = doc(db, "allocations", allocationId);
-    const allocSnap = await getDoc(allocRef);
+    const allocRef = db.collection("allocations").doc(allocationId);
+    const allocSnap = await allocRef.get();
 
-    if (!allocSnap.exists()) {
+    if (!allocSnap.exists) {
       return NextResponse.json(
         { error: "해당 예산 배정 정보를 찾을 수 없습니다." },
         { status: 404 }
       );
     }
 
-    const allocation = allocSnap.data();
+    const allocation = allocSnap.data()!;
 
     // 보안 검사: 학교 계정인 경우 자신의 학교 배정 예산인지 확인
     if (session.role === "school" && allocation.school_name !== session.schoolId) {
@@ -151,11 +147,10 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. 해당 배정 예산의 기존 지출 내역들 가져오기 (한도 유효성 검사용)
-    const expQuery = query(collection(db, "expenditures"), where("allocation_id", "==", allocationId));
-    const expSnap = await getDocs(expQuery);
+    const expSnap = await db.collection("expenditures").where("allocation_id", "==", allocationId).get();
     
     const existingExpenditures: any[] = [];
-    expSnap.forEach((expDoc) => {
+    expSnap.forEach((expDoc: any) => {
       const data = expDoc.data();
       existingExpenditures.push({
         id: expDoc.id,
@@ -198,7 +193,7 @@ export async function POST(request: NextRequest) {
       created_at: new Date(),
     };
 
-    const docRef = await addDoc(collection(db, "expenditures"), newDoc);
+    const docRef = await db.collection("expenditures").add(newDoc);
 
     return NextResponse.json({
       success: true,
@@ -247,17 +242,17 @@ export async function PUT(request: NextRequest) {
     }
 
     // 1) 지출 내역 조회
-    const expRef = doc(db, "expenditures", id);
-    const expSnap = await getDoc(expRef);
+    const expRef = db.collection("expenditures").doc(id);
+    const expSnap = await expRef.get();
 
-    if (!expSnap.exists()) {
+    if (!expSnap.exists) {
       return NextResponse.json(
         { error: "지출 내역을 찾을 수 없습니다." },
         { status: 404 }
       );
     }
 
-    const expenditure = expSnap.data();
+    const expenditure = expSnap.data()!;
 
     // 보안 검사: 학교 계정인 경우 자신의 학교 지출인지 확인
     if (session.role === "school" && expenditure.school_name !== session.schoolId) {
@@ -271,24 +266,23 @@ export async function PUT(request: NextRequest) {
     const targetAllocationId = allocationId || oldAllocationId;
 
     // 2) 배정 예산 정보 조회
-    const allocRef = doc(db, "allocations", targetAllocationId);
-    const allocSnap = await getDoc(allocRef);
+    const allocRef = db.collection("allocations").doc(targetAllocationId);
+    const allocSnap = await allocRef.get();
 
-    if (!allocSnap.exists()) {
+    if (!allocSnap.exists) {
       return NextResponse.json(
         { error: "배정 예산 정보를 찾을 수 없습니다." },
         { status: 404 }
       );
     }
 
-    const allocation = allocSnap.data();
+    const allocation = allocSnap.data()!;
 
     // 3) 다른 지출 내역들 가져오기 (현재 수정 건 제외)
-    const expQuery = query(collection(db, "expenditures"), where("allocation_id", "==", targetAllocationId));
-    const allExpsSnap = await getDocs(expQuery);
+    const allExpsSnap = await db.collection("expenditures").where("allocation_id", "==", targetAllocationId).get();
     
     const existingExpenditures: any[] = [];
-    allExpsSnap.forEach((expDoc) => {
+    allExpsSnap.forEach((expDoc: any) => {
       if (expDoc.id !== id) {
         const data = expDoc.data();
         existingExpenditures.push({
@@ -321,7 +315,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // 5) 업데이트 실행
-    await updateDoc(expRef, {
+    await expRef.update({
       allocation_id: targetAllocationId,
       expense_category: category,
       amount: parsedAmount,
@@ -362,17 +356,17 @@ export async function DELETE(request: NextRequest) {
     }
 
     // 1) 지출 내역 조회 및 권한 검증
-    const expRef = doc(db, "expenditures", id);
-    const expSnap = await getDoc(expRef);
+    const expRef = db.collection("expenditures").doc(id);
+    const expSnap = await expRef.get();
 
-    if (!expSnap.exists()) {
+    if (!expSnap.exists) {
       return NextResponse.json(
         { error: "지출 내역을 찾을 수 없습니다." },
         { status: 404 }
       );
     }
 
-    const expenditure = expSnap.data();
+    const expenditure = expSnap.data()!;
 
     // 관리자가 아니면 본인 학교 지출만 삭제 가능
     if (session.role !== "admin" && expenditure.school_name !== session.schoolId) {
@@ -383,7 +377,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // 2) 삭제 실행
-    await deleteDoc(expRef);
+    await expRef.delete();
 
     return NextResponse.json({ success: true });
   } catch (err) {

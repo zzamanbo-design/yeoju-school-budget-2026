@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/firebase";
-import { collection, getDocs, addDoc, query, where } from "firebase/firestore";
+import { adminDb as db } from "@/lib/firebase-admin";
 import { getSession } from "@/lib/auth";
 
 // 1. 현재 학교의 모든 티켓 조회
@@ -17,11 +16,10 @@ export async function GET(request: NextRequest) {
 
     const schoolId = session.schoolId; // schoolId represents the school name string
     
-    const q = query(collection(db, "support_tickets"), where("school_name", "==", String(schoolId)));
-    const ticketsSnap = await getDocs(q);
+    const ticketsSnap = await db.collection("support_tickets").where("school_name", "==", String(schoolId)).get();
     
     const ticketsList: any[] = [];
-    ticketsSnap.forEach((docSnap) => {
+    ticketsSnap.forEach((docSnap: any) => {
       const t = docSnap.data();
       ticketsList.push({
         id: docSnap.id,
@@ -85,7 +83,7 @@ export async function POST(request: NextRequest) {
       answered_at: null,
     };
 
-    const docRef = await addDoc(collection(db, "support_tickets"), newTicket);
+    const docRef = await db.collection("support_tickets").add(newTicket);
 
     return NextResponse.json({
       success: true,

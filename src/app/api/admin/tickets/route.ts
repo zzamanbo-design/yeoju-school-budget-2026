@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/firebase";
-import { collection, getDocs, doc, updateDoc, query } from "firebase/firestore";
+import { adminDb as db } from "@/lib/firebase-admin";
 import { getSession } from "@/lib/auth";
 
 // 1. 모든 티켓 조회 (학교명 포함)
@@ -15,11 +14,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const ticketsQuery = query(collection(db, "support_tickets"));
-    const ticketsSnap = await getDocs(ticketsQuery);
+    const ticketsSnap = await db.collection("support_tickets").get();
     
     const ticketsList: any[] = [];
-    ticketsSnap.forEach((ticketDoc) => {
+    ticketsSnap.forEach((ticketDoc: any) => {
       const t = ticketDoc.data();
       ticketsList.push({
         id: ticketDoc.id,
@@ -70,8 +68,8 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const ticketRef = doc(db, "support_tickets", id);
-    await updateDoc(ticketRef, {
+    const ticketRef = db.collection("support_tickets").doc(id);
+    await ticketRef.update({
       answer,
       status: "RESOLVED",
       answered_at: new Date(),

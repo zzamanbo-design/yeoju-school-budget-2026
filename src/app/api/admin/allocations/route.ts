@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/firebase";
-import { collection, getDocs, doc, updateDoc, query } from "firebase/firestore";
+import { adminDb as db } from "@/lib/firebase-admin";
 import { getSession } from "@/lib/auth";
 
 // 1. 모든 예산 배정 목록 조회 (학교명 포함)
@@ -16,15 +15,13 @@ export async function GET(request: NextRequest) {
     }
 
     // 1) 모든 allocations 가져오기
-    const allocQuery = query(collection(db, "allocations"));
-    const allocSnap = await getDocs(allocQuery);
+    const allocSnap = await db.collection("allocations").get();
 
     // 2) 모든 expenditures 가져와서 누적 지출 맵 빌드
-    const expQuery = query(collection(db, "expenditures"));
-    const expSnap = await getDocs(expQuery);
+    const expSnap = await db.collection("expenditures").get();
     
     const expMap = new Map<string, number>();
-    expSnap.forEach((expDoc) => {
+    expSnap.forEach((expDoc: any) => {
       const data = expDoc.data();
       const allocId = data.allocation_id;
       const amt = Number(data.amount) || 0;
@@ -35,7 +32,7 @@ export async function GET(request: NextRequest) {
 
     // 3) 데이터 포맷팅
     const allocationsList: any[] = [];
-    allocSnap.forEach((allocDoc) => {
+    allocSnap.forEach((allocDoc: any) => {
       const a = allocDoc.data();
       const spentAmount = expMap.get(allocDoc.id) || 0;
       allocationsList.push({
@@ -84,8 +81,8 @@ export async function PUT(request: NextRequest) {
     }
 
     // Firestore allocations 업데이트
-    const allocRef = doc(db, "allocations", id);
-    await updateDoc(allocRef, {
+    const allocRef = db.collection("allocations").doc(id);
+    await allocRef.update({
       allocated_amount: Number(allocatedAmount),
     });
 

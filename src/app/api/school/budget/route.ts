@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/firebase";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { adminDb as db } from "@/lib/firebase-admin";
 import { getSession } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
@@ -24,15 +23,13 @@ export async function GET(request: NextRequest) {
     }
 
     // 1) allocations 조회
-    const allocQuery = query(collection(db, "allocations"), where("school_name", "==", String(schoolId)));
-    const allocSnap = await getDocs(allocQuery);
+    const allocSnap = await db.collection("allocations").where("school_name", "==", String(schoolId)).get();
 
     // 2) expenditures 조회
-    const expQuery = query(collection(db, "expenditures"), where("school_name", "==", String(schoolId)));
-    const expSnap = await getDocs(expQuery);
+    const expSnap = await db.collection("expenditures").where("school_name", "==", String(schoolId)).get();
 
     const expMap = new Map<string, any[]>();
-    expSnap.forEach((expDoc) => {
+    expSnap.forEach((expDoc: any) => {
       const exp = expDoc.data();
       const allocId = exp.allocation_id;
       if (allocId) {
@@ -51,7 +48,7 @@ export async function GET(request: NextRequest) {
     });
 
     const allocationsList: any[] = [];
-    allocSnap.forEach((allocDoc) => {
+    allocSnap.forEach((allocDoc: any) => {
       const alloc = allocDoc.data();
       const expenditures = expMap.get(allocDoc.id) || [];
       allocationsList.push({

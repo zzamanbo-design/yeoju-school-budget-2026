@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/firebase";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { adminDb as db } from "@/lib/firebase-admin";
 import { verifyPassword } from "@/lib/hash";
 import { createSessionToken, COOKIE_NAME } from "@/lib/auth";
 
@@ -16,17 +15,17 @@ export async function POST(request: NextRequest) {
     }
 
     // 1. school_accounts 컬렉션에서 계정 조회
-    const accountRef = doc(db, "school_accounts", loginId.trim());
-    const accountSnap = await getDoc(accountRef);
+    const accountRef = db.collection("school_accounts").doc(loginId.trim());
+    const accountSnap = await accountRef.get();
 
-    if (!accountSnap.exists()) {
+    if (!accountSnap.exists) {
       return NextResponse.json(
         { error: "학교명 또는 비밀번호가 올바르지 않습니다." },
         { status: 401 }
       );
     }
 
-    const accountData = accountSnap.data();
+    const accountData = accountSnap.data()!;
 
     // 2. 비밀번호 해시값 검증
     if (!verifyPassword(password, accountData.password_hash)) {
@@ -42,10 +41,10 @@ export async function POST(request: NextRequest) {
 
     if (accountData.role === "school" && accountData.school_name) {
       schoolName = accountData.school_name;
-      const schoolRef = doc(db, "schools", schoolName);
-      const schoolSnap = await getDoc(schoolRef);
-      if (schoolSnap.exists()) {
-        schoolLevel = schoolSnap.data().school_level;
+      const schoolRef = db.collection("schools").doc(schoolName);
+      const schoolSnap = await schoolRef.get();
+      if (schoolSnap.exists) {
+        schoolLevel = schoolSnap.data()!.school_level;
       }
     }
 
@@ -60,7 +59,7 @@ export async function POST(request: NextRequest) {
     });
 
     // 5. 로그인 시각 업데이트
-    await updateDoc(accountRef, {
+    await accountRef.update({
       last_login_at: new Date(),
     });
 

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/firebase";
-import { collection, getDocs, doc, deleteDoc, writeBatch } from "firebase/firestore";
+import { adminDb as db } from "@/lib/firebase-admin";
 import { getSession } from "@/lib/auth";
 import * as xlsx from "xlsx";
 
@@ -41,9 +40,9 @@ export async function POST(request: NextRequest) {
     }
 
     // 1. 전체 학교 목록 가져오기 (이름 매핑 및 검증용)
-    const schoolsSnap = await getDocs(collection(db, "schools"));
+    const schoolsSnap = await db.collection("schools").get();
     const validSchools = new Set<string>();
-    schoolsSnap.forEach((schoolDoc) => {
+    schoolsSnap.forEach((schoolDoc: any) => {
       validSchools.add(schoolDoc.id.trim());
     });
 
@@ -128,42 +127,44 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. 기존 해당 학교들의 배정 데이터 삭제 (메모리 매칭 및 WriteBatch 활용)
-    const allAllocationsSnap = await getDocs(collection(db, "allocations"));
-    const deleteBatch = writeBatch(db);
+    const allAllocationsSnap = await db.collection("allocations").get();
+    const deleteBatch = db.batch();
     let delCount = 0;
 
-    allAllocationsSnap.forEach((allocDoc) => {
+    allAllocationsSnap.forEach((allocDoc: any) => {
       const data = allocDoc.data();
       if (data.school_name && schoolsToUpdate.has(data.school_name)) {
         deleteBatch.delete(allocDoc.ref);
         delCount++;
         if (delCount >= 400) {
-          delCount = 0;
+          // Commit and restart batch for every 400 deletes
+          // In an async loop this needs await, but we are inside a sync forEach
+          // Let's replace forEach with a normal for loop to support await
         }
       }
     });
+    // Wait, the original code didn't await inside forEach. I'll just gather references and delete them.
+    const docsToDelete = allAllocationsSnap.docs.filter((d: any) => {
+      const data = d.data();
+      return data.school_name && schoolsToUpdate.has(data.school_name);
+    });
 
-    // 배치 삭제 커밋 (주의: 실제 프로덕션 배치 제한 방지 차원에서 호출)
-    // Firestore batch limit is 500 operations. Since we delete and then insert, we do them separately.
-    await deleteBatch.commit();
-
-    // 4. 새 배정 데이터 일괄 인서트 (WriteBatch)
-    let insertBatch = writeBatch(db);
-    let insCount = 0;
-
-    for (const alloc of parsedAllocations) {
-      const docRef = doc(collection(db, "allocations"));
-      insertBatch.set(docRef, alloc);
-      insCount++;
-      if (insCount >= 400) {
-        await insertBatch.commit();
-        insertBatch = writeBatch(db);
-        insCount = 0;
-      }
+    for (let i = 0; i < docsToDelete.length; i += 400) {
+      const chunk = docsToDelete.slice(i, i + 400);
+      const batch = db.batch();
+      chunk.forEach((d: any) => batch.delete(d.ref));
+      await batch.commit();
     }
 
-    if (insCount > 0) {
-      await insertBatch.commit();
+    // 4. 새 배정 데이터 일괄 인서트 (WriteBatch)
+    for (let i = 0; i < parsedAllocations.length; i += 400) {
+      const chunk = parsedAllocations.slice(i, i + 400);
+      const batch = db.batch();
+      chunk.forEach((alloc: any) => {
+        const docRef = db.collection("allocations").doc();
+        batch.set(docRef, alloc);
+      });
+      await batch.commit();
     }
 
     return NextResponse.json({

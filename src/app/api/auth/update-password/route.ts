@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/firebase";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { adminDb as db } from "@/lib/firebase-admin";
 import { hashPassword } from "@/lib/hash";
 import { getSession, createSessionToken, COOKIE_NAME } from "@/lib/auth";
 
@@ -39,10 +38,10 @@ export async function POST(request: NextRequest) {
     }
 
     // 1. school_accounts 컬렉션에서 계정 조회 및 비밀번호 업데이트
-    const accountRef = doc(db, "school_accounts", String(session.accountId));
-    const accountSnap = await getDoc(accountRef);
+    const accountRef = db.collection("school_accounts").doc(String(session.accountId));
+    const accountSnap = await accountRef.get();
 
-    if (!accountSnap.exists()) {
+    if (!accountSnap.exists) {
       return NextResponse.json(
         { error: "계정을 찾을 수 없습니다." },
         { status: 404 }
@@ -51,7 +50,7 @@ export async function POST(request: NextRequest) {
 
     // 새 비밀번호 해싱 및 저장
     const hashed = hashPassword(newPassword);
-    await updateDoc(accountRef, {
+    await accountRef.update({
       password_hash: hashed,
       password_changed: true,
     });
