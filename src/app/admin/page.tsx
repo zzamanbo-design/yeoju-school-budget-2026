@@ -411,7 +411,7 @@ export default function AdminDashboard() {
   };
 
   // 티켓 답변 삭제
-  const deleteAnswer = async (ticketId: string) => {
+  const deleteAnswer = async (ticketId: any) => {
     if (!confirm("답변을 삭제하시겠습니까? (상태가 '답변 대기'로 변경됩니다)")) return;
 
     setLoading(true);
