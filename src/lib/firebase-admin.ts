@@ -7,7 +7,12 @@ if (!getApps().length) {
   
   if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
     try {
-      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+      let keyStr = process.env.FIREBASE_SERVICE_ACCOUNT_KEY.trim();
+      // Vercel 환경변수 복사 시 실수로 작은따옴표가 들어간 경우 제거
+      if (keyStr.startsWith("'") && keyStr.endsWith("'")) {
+        keyStr = keyStr.slice(1, -1);
+      }
+      const serviceAccount = JSON.parse(keyStr);
       credential = cert(serviceAccount);
     } catch (error) {
       console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY:', error);
