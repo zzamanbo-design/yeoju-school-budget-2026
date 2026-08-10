@@ -84,3 +84,41 @@ export async function PUT(request: NextRequest) {
     );
   }
 }
+
+// 3. 티켓 답변 삭제 처리 (OPEN 상태로 되돌리기)
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await getSession();
+
+    if (!session || session.role !== "admin") {
+      return NextResponse.json(
+        { error: "관리자 권한이 필요합니다." },
+        { status: 403 }
+      );
+    }
+
+    const { id } = await request.json();
+
+    if (!id) {
+      return NextResponse.json(
+        { error: "티켓 ID가 필요합니다." },
+        { status: 400 }
+      );
+    }
+
+    const ticketRef = db.collection("support_tickets").doc(id);
+    await ticketRef.update({
+      answer: null,
+      status: "OPEN",
+      answered_at: null,
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("DELETE tickets error:", err);
+    return NextResponse.json(
+      { error: "서버 오류가 발생했습니다." },
+      { status: 500 }
+    );
+  }
+}

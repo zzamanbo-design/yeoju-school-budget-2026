@@ -410,6 +410,39 @@ export default function AdminDashboard() {
     setTicketAnswers((prev) => ({ ...prev, [ticket.id]: ticket.answer || "" }));
   };
 
+  // 티켓 답변 삭제
+  const deleteAnswer = async (ticketId: string) => {
+    if (!confirm("답변을 삭제하시겠습니까? (상태가 '답변 대기'로 변경됩니다)")) return;
+
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/tickets", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: ticketId }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        setMessage({ type: "danger", text: data.error || "답변 삭제에 실패했습니다." });
+        return;
+      }
+
+      setTickets((prev) =>
+        prev.map((t) =>
+          t.id === ticketId
+            ? { ...t, answer: null, status: "OPEN", answeredAt: null }
+            : t
+        )
+      );
+      setMessage({ type: "success", text: "답변이 성공적으로 삭제되었습니다." });
+    } catch {
+      setMessage({ type: "danger", text: "답변 삭제 중 서버 오류가 발생했습니다." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // 아코디언 토글 헬퍼
   const toggleSchoolExpand = (schoolName: string) => {
     setExpandedSchools((prev) => ({
@@ -1194,9 +1227,14 @@ export default function AdminDashboard() {
                           <div style={{ fontWeight: 700, color: 'var(--success)', fontSize: '0.85rem' }}>
                             교육지원청 답변 ({new Date(ticket.answeredAt || '').toLocaleDateString()})
                           </div>
-                          <button className="btn btn-secondary" onClick={() => startEditTicket(ticket)} style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}>
-                            수정
-                          </button>
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button className="btn btn-secondary" onClick={() => startEditTicket(ticket)} style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}>
+                              수정
+                            </button>
+                            <button className="btn btn-danger" onClick={() => deleteAnswer(ticket.id)} style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', background: 'var(--danger)', color: 'white' }}>
+                              삭제
+                            </button>
+                          </div>
                         </div>
                         <p style={{ color: 'var(--text-primary)', fontSize: '0.9rem', whiteSpace: 'pre-wrap' }}>{ticket.answer}</p>
                       </div>
