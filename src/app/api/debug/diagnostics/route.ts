@@ -1,39 +1,46 @@
 import { NextResponse } from "next/server";
 import { adminDb as db } from "@/lib/firebase-admin";
+import { verifyPassword } from "@/lib/hash";
+import { createSessionToken } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const keyStr = process.env.FIREBASE_SERVICE_ACCOUNT_KEY || "";
-    let testParse = "Not attempted";
-    let parseError = null;
+    const url = new URL(req.url);
+    const loginId = url.searchParams.get("loginId") || "admin";
+    
+    let accountExists = false;
+    let pwdCheck = false;
+    let authError = null;
+    let tokenCreated = false;
 
     try {
-      let cleaned = keyStr.trim();
-      if (cleaned.startsWith("'") && cleaned.endsWith("'")) {
-        cleaned = cleaned.slice(1, -1);
+      const accountRef = db.collection("school_accounts").doc(loginId);
+      const accountSnap = await accountRef.get();
+      accountExists = accountSnap.exists;
+
+      if (accountExists) {
+        const accountData = accountSnap.data()!;
+        pwdCheck = verifyPassword("test", accountData.password_hash);
+
+        await createSessionToken({
+          accountId: accountSnap.id,
+          schoolId: "test",
+          schoolName: "test",
+          role: "admin",
+          passwordChanged: true,
+        });
+        tokenCreated = true;
       }
-      JSON.parse(cleaned);
-      testParse = "Success";
     } catch (e: any) {
-      testParse = "Failed";
-      parseError = e.message;
-    }
-
-    let dbError = null;
-    try {
-      // test db connection
-      await db.collection("schools").limit(1).get();
-    } catch (e: any) {
-      dbError = e.message;
+      authError = e.message;
     }
 
     return NextResponse.json({
-      keyLength: keyStr.length,
-      startsWith: keyStr.substring(0, 10),
-      endsWith: keyStr.substring(keyStr.length - 10),
-      testParse,
-      parseError,
-      dbError,
+      loginId,
+      accountExists,
+      pwdCheck,
+      tokenCreated,
+      authError,
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
