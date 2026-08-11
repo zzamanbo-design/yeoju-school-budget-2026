@@ -16,9 +16,9 @@ export async function POST(request: NextRequest) {
 
     const data = await request.json();
 
-    if (data.schoolName !== "여주교육지원청") {
+    if (data.schoolName !== "여주교육지원청(테스트)") {
       return NextResponse.json(
-        { error: "테스트 예산 배정은 '여주교육지원청'에만 가능합니다." },
+        { error: "테스트 예산 배정은 '여주교육지원청(테스트)'에만 가능합니다." },
         { status: 400 }
       );
     }
@@ -58,9 +58,9 @@ export async function DELETE(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const schoolName = searchParams.get("schoolName");
 
-    if (schoolName !== "여주교육지원청") {
+    if (schoolName !== "여주교육지원청(테스트)") {
       return NextResponse.json(
-        { error: "테스트 예산 초기화는 '여주교육지원청'에만 가능합니다." },
+        { error: "테스트 예산 초기화는 '여주교육지원청(테스트)'에만 가능합니다." },
         { status: 400 }
       );
     }
