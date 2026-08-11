@@ -207,7 +207,7 @@ export default function AdminDashboard() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          schoolName: "여주교육지원청",
+          schoolName: "여주교육지원청(테스트)",
           projectType: testProjectType,
           projectCodeName: testProjectCodeName,
           fundingSource: testFundingSource,
@@ -233,10 +233,10 @@ export default function AdminDashboard() {
   };
 
   const handleTestBudgetDelete = async () => {
-    if (!confirm("정말로 '여주교육지원청'의 테스트 예산 데이터를 모두 초기화하시겠습니까?")) return;
+    if (!confirm("정말로 '여주교육지원청(테스트)'의 테스트 예산 데이터를 모두 초기화하시겠습니까?")) return;
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/test-budget?schoolName=" + encodeURIComponent("여주교육지원청"), {
+      const res = await fetch("/api/admin/test-budget?schoolName=" + encodeURIComponent("여주교육지원청(테스트)"), {
         method: "DELETE",
       });
       const data = await res.json();
@@ -1324,7 +1324,7 @@ export default function AdminDashboard() {
 
                 <hr style={{ border: 'none', borderTop: '1px solid var(--border-card)', margin: '3rem 0 2rem 0' }} />
 
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--primary)' }}>[테스트 계정] 여주교육지원청 예산 배정/초기화</h3>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--primary)' }}>[테스트 계정] 여주교육지원청(테스트) 예산 배정/초기화</h3>
                 <form onSubmit={handleTestBudgetSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   <div style={{ display: 'flex', gap: '1rem' }}>
                     <div className="form-group" style={{ flex: 1 }}>
