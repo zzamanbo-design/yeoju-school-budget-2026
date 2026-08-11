@@ -1173,10 +1173,22 @@ export default function AdminDashboard() {
         {/* 3. 예산 일괄 업로드 탭 */}
         {activeTab === "upload" && (
           <div className="glass-card" style={{ maxWidth: '700px', margin: '0 auto' }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem' }}>교부 예산 일괄 등록</h2>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-              사전에 취합된 여주 관내 학교별 필수/공모 사업의 통합 교부액 스프레드시트 파일(xlsx 또는 csv)을 주입(Upload)합니다.
-            </p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+              <div>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem' }}>교부 예산 일괄 등록 및 다운로드</h2>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                  사전에 취합된 여주 관내 학교별 필수/공모 사업의 통합 교부액 스프레드시트 파일(xlsx 또는 csv)을 주입(Upload)하거나, 시스템에 등록된 현재 상태를 다운로드합니다.
+                </p>
+              </div>
+              <a href="/api/admin/download-budget" download className="btn btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                현재 데이터 다운로드
+              </a>
+            </div>
 
             <div className="alert alert-info">
               <strong>업로드 파일 필수 헤더 칼럼 구조:</strong>
