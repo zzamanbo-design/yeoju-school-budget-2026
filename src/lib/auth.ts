@@ -12,7 +12,7 @@ export interface SessionUser {
   schoolId: string | number | null;
   schoolName: string;
   schoolLevel?: string | null;
-  role: "school" | "admin";
+  role: "school" | "admin" | "viewer";
   passwordChanged: boolean;
 }
 

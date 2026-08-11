@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 const SCHOOLS_LIST = [
   "admin",
+  "cityhall",
   // 유치원 (6개)
   "능현유치원", "소화유치원", "여주대학교부속유치원", "임당유치원", "재능유치원", "해님유치원",
   // 초등학교 (24개)
@@ -29,6 +30,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isAdminLogin, setIsAdminLogin] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,7 +90,18 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="form-label" htmlFor="loginId">학교명 선택 (또는 관리자 ID)</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+              <label className="form-label" htmlFor="loginId" style={{ margin: 0 }}>
+                {isAdminLogin ? "관리자 계정 선택" : "학교명 선택"}
+              </label>
+              <button 
+                type="button" 
+                onClick={() => { setIsAdminLogin(!isAdminLogin); setLoginId(""); }}
+                style={{ background: 'none', border: 'none', color: 'var(--primary-light)', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'underline' }}
+              >
+                {isAdminLogin ? "학교 로그인으로 돌아가기" : "관리자이신가요?"}
+              </button>
+            </div>
             <select
               className="form-control"
               id="loginId"
@@ -97,8 +110,8 @@ export default function LoginPage() {
               disabled={loading}
               required
             >
-              <option value="" disabled>-- 학교명을 선택해 주세요 --</option>
-              {SCHOOLS_LIST.map((school) => (
+              <option value="" disabled>-- {isAdminLogin ? "관리자 계정을" : "학교명을"} 선택해 주세요 --</option>
+              {SCHOOLS_LIST.filter(s => isAdminLogin ? (s === "admin" || s === "cityhall") : (s !== "admin" && s !== "cityhall")).map((school) => (
                 <option key={school} value={school}>
                   {school}
                 </option>

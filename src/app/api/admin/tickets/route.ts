@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getSession();
 
-    if (!session || session.role !== "admin") {
+    if (!session || (session.role !== "admin" && session.role !== "viewer")) {
       return NextResponse.json(
         { error: "관리자 권한이 필요합니다." },
         { status: 403 }

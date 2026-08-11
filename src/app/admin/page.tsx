@@ -100,7 +100,17 @@ export default function AdminDashboard() {
     }
   };
 
+  const [userRole, setUserRole] = useState<string>("admin");
+  
   useEffect(() => {
+    fetch("/api/auth/session")
+      .then(res => res.json())
+      .then(data => {
+        if (data.authenticated && data.session) {
+          setUserRole(data.session.role);
+        }
+      })
+      .catch(err => console.error("Session check failed", err));
     loadData();
   }, []);
 
@@ -178,6 +188,66 @@ export default function AdminDashboard() {
       loadData();
     } catch {
       setMessage({ type: "danger", text: "삭제 중 서버 오류가 발생했습니다." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 테스트 예산 배정 상태 및 핸들러
+  const [testAllocAmount, setTestAllocAmount] = useState("");
+  const [testProjectType, setTestProjectType] = useState("");
+  const [testProjectCodeName, setTestProjectCodeName] = useState("");
+  const [testFundingSource, setTestFundingSource] = useState("");
+
+  const handleTestBudgetSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/test-budget", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          schoolName: "여주교육지원청",
+          projectType: testProjectType,
+          projectCodeName: testProjectCodeName,
+          fundingSource: testFundingSource,
+          allocatedAmount: parseInt(testAllocAmount.replace(/[^0-9]/g, ""), 10) || 0,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setMessage({ type: "danger", text: data.error || "테스트 예산 배정에 실패했습니다." });
+        return;
+      }
+      setMessage({ type: "success", text: "테스트 예산이 성공적으로 배정되었습니다." });
+      setTestAllocAmount("");
+      setTestProjectType("");
+      setTestProjectCodeName("");
+      setTestFundingSource("");
+      loadData();
+    } catch {
+      setMessage({ type: "danger", text: "테스트 예산 배정 중 오류가 발생했습니다." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTestBudgetDelete = async () => {
+    if (!confirm("정말로 '여주교육지원청'의 테스트 예산 데이터를 모두 초기화하시겠습니까?")) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/test-budget?schoolName=" + encodeURIComponent("여주교육지원청"), {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setMessage({ type: "danger", text: data.error || "테스트 예산 초기화에 실패했습니다." });
+        return;
+      }
+      setMessage({ type: "success", text: `총 ${data.deletedCount}건의 테스트 예산이 초기화되었습니다.` });
+      loadData();
+    } catch {
+      setMessage({ type: "danger", text: "초기화 중 오류가 발생했습니다." });
     } finally {
       setLoading(false);
     }
@@ -760,21 +830,23 @@ export default function AdminDashboard() {
               >
                 모두 접기
               </button>
-              <button
-                className="btn btn-secondary"
-                onClick={handleBulkResetPassword}
-                style={{
-                  padding: '0.4rem 0.8rem',
-                  fontSize: '0.8rem',
-                  marginLeft: 'auto',
-                  border: '1px solid rgba(239, 68, 68, 0.4)',
-                  color: '#ef4444',
-                  background: 'rgba(239, 68, 68, 0.05)'
-                }}
-                disabled={loading}
-              >
-                🔑 전체 학교 비밀번호 일괄 초기화
-              </button>
+              {userRole === "admin" && (
+                <button
+                  className="btn btn-secondary"
+                  onClick={handleBulkResetPassword}
+                  style={{
+                    padding: '0.4rem 0.8rem',
+                    fontSize: '0.8rem',
+                    marginLeft: 'auto',
+                    border: '1px solid rgba(239, 68, 68, 0.4)',
+                    color: '#ef4444',
+                    background: 'rgba(239, 68, 68, 0.05)'
+                  }}
+                  disabled={loading}
+                >
+                  🔑 전체 학교 비밀번호 일괄 초기화
+                </button>
+              )}
             </div>
 
             {/* 아코디언 목록 뷰 */}
@@ -878,8 +950,12 @@ export default function AdminDashboard() {
                                   {groupedData.type !== "funding" && <th>재원</th>}
                                   <th style={{ textAlign: 'right' }}>교부 금액</th>
                                   <th style={{ textAlign: 'center' }}>지출액</th>
-                                  <th style={{ textAlign: 'center' }}>비밀번호</th>
-                                  <th style={{ textAlign: 'center' }}>관리</th>
+                                  {userRole === "admin" && (
+                                    <>
+                                      <th style={{ textAlign: 'center' }}>비밀번호</th>
+                                      <th style={{ textAlign: 'center' }}>관리</th>
+                                    </>
+                                  )}
                                 </tr>
                               </thead>
                               <tbody>
@@ -925,43 +1001,47 @@ export default function AdminDashboard() {
                                     >
                                       🔍 {alloc.spentAmount.toLocaleString()}원
                                     </td>
-                                    <td style={{ textAlign: 'center' }}>
-                                      <button
-                                        className="btn btn-secondary"
-                                        onClick={() => resetPassword(alloc.schoolId, alloc.schoolName)}
-                                        style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
-                                      >
-                                        초기화
-                                      </button>
-                                    </td>
-                                    <td style={{ textAlign: 'center' }}>
-                                      {editingId === alloc.id ? (
-                                        <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'center' }}>
-                                          <button
-                                            className="btn btn-success"
-                                            onClick={() => saveEdit(alloc.id)}
-                                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
-                                          >
-                                            저장
-                                          </button>
+                                    {userRole === "admin" && (
+                                      <>
+                                        <td style={{ textAlign: 'center' }}>
                                           <button
                                             className="btn btn-secondary"
-                                            onClick={cancelEdit}
+                                            onClick={() => resetPassword(alloc.schoolId, alloc.schoolName)}
                                             style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
                                           >
-                                            취소
+                                            초기화
                                           </button>
-                                        </div>
-                                      ) : (
-                                        <button
-                                          className="btn btn-primary"
-                                          onClick={() => startEdit(alloc)}
-                                          style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
-                                        >
-                                          수정
-                                        </button>
-                                      )}
-                                    </td>
+                                        </td>
+                                        <td style={{ textAlign: 'center' }}>
+                                          {editingId === alloc.id ? (
+                                            <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'center' }}>
+                                              <button
+                                                className="btn btn-success"
+                                                onClick={() => saveEdit(alloc.id)}
+                                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                                              >
+                                                저장
+                                              </button>
+                                              <button
+                                                className="btn btn-secondary"
+                                                onClick={cancelEdit}
+                                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                                              >
+                                                취소
+                                              </button>
+                                            </div>
+                                          ) : (
+                                            <button
+                                              className="btn btn-primary"
+                                              onClick={() => startEdit(alloc)}
+                                              style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                                            >
+                                              수정
+                                            </button>
+                                          )}
+                                        </td>
+                                      </>
+                                    )}
                                   </tr>
                                   {expandedAllocExps[alloc.id] && (
                                     <tr style={{ background: 'rgba(255, 255, 255, 0.01)' }}>
@@ -990,7 +1070,7 @@ export default function AdminDashboard() {
                                                   <th>지출 비목</th>
                                                   <th>지출 세부 내용</th>
                                                   <th style={{ textAlign: 'right' }}>지출 금액</th>
-                                                  <th style={{ textAlign: 'center' }}>관리</th>
+                                                  {userRole === "admin" && <th style={{ textAlign: 'center' }}>관리</th>}
                                                 </tr>
                                               </thead>
                                               <tbody>
@@ -1057,43 +1137,45 @@ export default function AdminDashboard() {
                                                           exp.amount.toLocaleString() + "원"
                                                         )}
                                                       </td>
-                                                      <td style={{ textAlign: 'center' }}>
-                                                        {isEditing ? (
-                                                          <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'center' }}>
-                                                            <button
-                                                              className="btn btn-success"
-                                                              onClick={() => saveEditExp(exp.id, alloc.id)}
-                                                              style={{ padding: '0.15rem 0.4rem', fontSize: '0.75rem' }}
-                                                            >
-                                                              저장
-                                                            </button>
-                                                            <button
-                                                              className="btn btn-secondary"
-                                                              onClick={() => setEditingExpId(null)}
-                                                              style={{ padding: '0.15rem 0.4rem', fontSize: '0.75rem' }}
-                                                            >
-                                                              취소
-                                                            </button>
-                                                          </div>
-                                                        ) : (
-                                                          <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'center' }}>
-                                                            <button
-                                                              className="btn btn-primary"
-                                                              onClick={() => startEditExp(exp)}
-                                                              style={{ padding: '0.15rem 0.4rem', fontSize: '0.75rem' }}
-                                                            >
-                                                              수정
-                                                            </button>
-                                                            <button
-                                                              className="btn btn-danger"
-                                                              onClick={() => deleteExp(exp.id, alloc.id)}
-                                                              style={{ padding: '0.15rem 0.4rem', fontSize: '0.75rem' }}
-                                                            >
-                                                              삭제
-                                                            </button>
-                                                          </div>
-                                                        )}
-                                                      </td>
+                                                      {userRole === "admin" && (
+                                                        <td style={{ textAlign: 'center' }}>
+                                                          {isEditing ? (
+                                                            <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'center' }}>
+                                                              <button
+                                                                className="btn btn-success"
+                                                                onClick={() => saveEditExp(exp.id, alloc.id)}
+                                                                style={{ padding: '0.15rem 0.4rem', fontSize: '0.75rem' }}
+                                                              >
+                                                                저장
+                                                              </button>
+                                                              <button
+                                                                className="btn btn-secondary"
+                                                                onClick={() => setEditingExpId(null)}
+                                                                style={{ padding: '0.15rem 0.4rem', fontSize: '0.75rem' }}
+                                                              >
+                                                                취소
+                                                              </button>
+                                                            </div>
+                                                          ) : (
+                                                            <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'center' }}>
+                                                              <button
+                                                                className="btn btn-primary"
+                                                                onClick={() => startEditExp(exp)}
+                                                                style={{ padding: '0.15rem 0.4rem', fontSize: '0.75rem' }}
+                                                              >
+                                                                수정
+                                                              </button>
+                                                              <button
+                                                                className="btn btn-danger"
+                                                                onClick={() => deleteExp(exp.id, alloc.id)}
+                                                                style={{ padding: '0.15rem 0.4rem', fontSize: '0.75rem' }}
+                                                              >
+                                                                삭제
+                                                              </button>
+                                                            </div>
+                                                          )}
+                                                        </td>
+                                                      )}
                                                     </tr>
                                                   );
                                                 })}
@@ -1215,28 +1297,69 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <form onSubmit={handleUploadSubmit} style={{ marginTop: '1.5rem' }}>
-              <div className="form-group">
-                <label className="form-label" htmlFor="excelFile">엑셀/CSV 파일 선택</label>
-                <input
-                  className="form-control"
-                  type="file"
-                  id="excelFile"
-                  accept=".xlsx, .xls, .csv"
-                  onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
-                  required
-                />
-              </div>
+            {userRole === "admin" ? (
+              <>
+                <form onSubmit={handleUploadSubmit} style={{ marginTop: '1.5rem' }}>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="excelFile">엑셀/CSV 파일 선택</label>
+                    <input
+                      className="form-control"
+                      type="file"
+                      id="excelFile"
+                      accept=".xlsx, .xls, .csv"
+                      onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                      required
+                    />
+                  </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2rem' }}>
-                <button type="button" className="btn btn-danger" onClick={handleDeleteAllAllocations} disabled={loading} style={{ background: 'var(--danger)', color: 'white' }}>
-                  모든 데이터 일괄 삭제 (초기화)
-                </button>
-                <button className="btn btn-primary" type="submit" disabled={loading || !uploadFile}>
-                  {loading ? "데이터 처리 및 업로드 중..." : "예산 데이터 일괄 주입"}
-                </button>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2rem' }}>
+                    <button type="button" className="btn btn-danger" onClick={handleDeleteAllAllocations} disabled={loading} style={{ background: 'var(--danger)', color: 'white' }}>
+                      모든 데이터 일괄 삭제 (초기화)
+                    </button>
+                    <button className="btn btn-primary" type="submit" disabled={loading || !uploadFile}>
+                      {loading ? "데이터 처리 및 업로드 중..." : "예산 데이터 일괄 주입"}
+                    </button>
+                  </div>
+                </form>
+
+                <hr style={{ border: 'none', borderTop: '1px solid var(--border-card)', margin: '3rem 0 2rem 0' }} />
+
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--primary)' }}>[테스트 계정] 여주교육지원청 예산 배정/초기화</h3>
+                <form onSubmit={handleTestBudgetSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div style={{ display: 'flex', gap: '1rem' }}>
+                    <div className="form-group" style={{ flex: 1 }}>
+                      <label className="form-label">사업유형</label>
+                      <input className="form-control" value={testProjectType} onChange={e => setTestProjectType(e.target.value)} required placeholder="예: 미래교육협력지구" />
+                    </div>
+                    <div className="form-group" style={{ flex: 1 }}>
+                      <label className="form-label">재원구분</label>
+                      <input className="form-control" value={testFundingSource} onChange={e => setTestFundingSource(e.target.value)} required placeholder="예: 시군구비" />
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">세부사업코드 및 명칭</label>
+                    <input className="form-control" value={testProjectCodeName} onChange={e => setTestProjectCodeName(e.target.value)} required placeholder="예: (10111) 글로벌 인재양성" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">교부금액 (원)</label>
+                    <input className="form-control" value={testAllocAmount} onChange={e => setTestAllocAmount(e.target.value.replace(/[^0-9]/g, ""))} required placeholder="예: 5000000" />
+                  </div>
+                  
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
+                    <button type="button" className="btn btn-danger" onClick={handleTestBudgetDelete} disabled={loading} style={{ background: 'var(--danger)', color: 'white' }}>
+                      테스트 예산 초기화
+                    </button>
+                    <button className="btn btn-primary" type="submit" disabled={loading}>
+                      {loading ? "처리 중..." : "단일 예산 배정"}
+                    </button>
+                  </div>
+                </form>
+              </>
+            ) : (
+              <div className="alert alert-info" style={{ marginTop: '2rem' }}>
+                읽기 전용(조회용) 권한으로는 예산을 업로드하거나 삭제할 수 없습니다.
               </div>
-            </form>
+            )}
           </div>
         )}
 
@@ -1280,39 +1403,43 @@ export default function AdminDashboard() {
                           <div style={{ fontWeight: 700, color: 'var(--success)', fontSize: '0.85rem' }}>
                             교육지원청 답변 ({new Date(ticket.answeredAt || '').toLocaleDateString()})
                           </div>
-                          <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            <button className="btn btn-secondary" onClick={() => startEditTicket(ticket)} style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}>
-                              수정
-                            </button>
-                            <button className="btn btn-danger" onClick={() => deleteAnswer(ticket.id)} style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', background: 'var(--danger)', color: 'white' }}>
-                              삭제
-                            </button>
-                          </div>
+                          {userRole === "admin" && (
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                              <button className="btn btn-secondary" onClick={() => startEditTicket(ticket)} style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}>
+                                수정
+                              </button>
+                              <button className="btn btn-danger" onClick={() => deleteAnswer(ticket.id)} style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', background: 'var(--danger)', color: 'white' }}>
+                                삭제
+                              </button>
+                            </div>
+                          )}
                         </div>
                         <p style={{ color: 'var(--text-primary)', fontSize: '0.9rem', whiteSpace: 'pre-wrap' }}>{ticket.answer}</p>
                       </div>
                     ) : (
-                      <div className="form-group" style={{ marginTop: '1rem' }}>
-                        <textarea
-                          className="form-control"
-                          rows={3}
-                          placeholder="답변 및 승인 여부를 작성하세요..."
-                          value={ticketAnswers[ticket.id] || ""}
-                          onChange={(e) =>
-                            setTicketAnswers((prev) => ({ ...prev, [ticket.id]: e.target.value }))
-                          }
-                        />
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem', gap: '0.5rem' }}>
-                          {editingTicketId === ticket.id && (
-                            <button className="btn btn-secondary" onClick={() => setEditingTicketId(null)} style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}>
-                              취소
+                      userRole === "admin" && (
+                        <div className="form-group" style={{ marginTop: '1rem' }}>
+                          <textarea
+                            className="form-control"
+                            rows={3}
+                            placeholder="답변 및 승인 여부를 작성하세요..."
+                            value={ticketAnswers[ticket.id] || ""}
+                            onChange={(e) =>
+                              setTicketAnswers((prev) => ({ ...prev, [ticket.id]: e.target.value }))
+                            }
+                          />
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem', gap: '0.5rem' }}>
+                            {editingTicketId === ticket.id && (
+                              <button className="btn btn-secondary" onClick={() => setEditingTicketId(null)} style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}>
+                                취소
+                              </button>
+                            )}
+                            <button className="btn btn-success" onClick={() => submitAnswer(ticket.id)} style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}>
+                              {editingTicketId === ticket.id ? "답변 수정" : "답변 등록"}
                             </button>
-                          )}
-                          <button className="btn btn-success" onClick={() => submitAnswer(ticket.id)} style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}>
-                            {editingTicketId === ticket.id ? "답변 수정" : "답변 등록"}
-                          </button>
+                          </div>
                         </div>
-                      </div>
+                      )
                     )}
                   </div>
                 ))

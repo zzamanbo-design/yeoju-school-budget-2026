@@ -62,12 +62,12 @@ export async function middleware(request: NextRequest) {
 
   // 3. 로그인 및 비밀번호 변경 완료 후 경로 처리
   if (pathname === "/login" || pathname === "/reset-password" || pathname === "/") {
-    const dashboard = session.role === "admin" ? "/admin" : "/school";
+    const dashboard = (session.role === "admin" || session.role === "viewer") ? "/admin" : "/school";
     return NextResponse.redirect(new URL(dashboard, request.url));
   }
 
   // 4. 권한에 따른 접근 제한
-  if (pathname.startsWith("/admin") && session.role !== "admin") {
+  if (pathname.startsWith("/admin") && session.role !== "admin" && session.role !== "viewer") {
     return NextResponse.redirect(new URL("/school", request.url));
   }
 
