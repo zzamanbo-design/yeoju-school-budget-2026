@@ -158,6 +158,30 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleDeleteAllAllocations = async () => {
+    if (!confirm("정말로 기존의 모든 교부 예산 데이터를 삭제하시겠습니까? (이 작업은 되돌릴 수 없습니다)")) return;
+    
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/upload-budget", {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      
+      if (!res.ok) {
+        setMessage({ type: "danger", text: data.error || "전체 삭제 중 오류가 발생했습니다." });
+        return;
+      }
+      
+      setMessage({ type: "success", text: `총 ${data.deletedCount}개의 예산 데이터가 성공적으로 초기화되었습니다.` });
+      loadData();
+    } catch {
+      setMessage({ type: "danger", text: "삭제 중 서버 오류가 발생했습니다." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // 개별 예산 수정 시작
   const startEdit = (alloc: Allocation) => {
     setEditingId(alloc.id);
@@ -1158,9 +1182,11 @@ export default function AdminDashboard() {
               <strong>업로드 파일 필수 헤더 칼럼 구조:</strong>
               <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap', fontFamily: 'monospace', fontSize: '0.8rem' }}>
                 <span style={{ background: 'rgba(0,0,0,0.2)', padding: '0.2rem 0.4rem', borderRadius: '4px' }}>학교명</span>
+                <span style={{ background: 'rgba(0,0,0,0.2)', padding: '0.2rem 0.4rem', borderRadius: '4px' }}>학교급</span>
+                <span style={{ background: 'rgba(0,0,0,0.2)', padding: '0.2rem 0.4rem', borderRadius: '4px' }}>설립구분</span>
                 <span style={{ background: 'rgba(0,0,0,0.2)', padding: '0.2rem 0.4rem', borderRadius: '4px' }}>사업유형</span>
-                <span style={{ background: 'rgba(0,0,0,0.2)', padding: '0.2rem 0.4rem', borderRadius: '4px' }}>세부사업코드_및_명칭</span>
                 <span style={{ background: 'rgba(0,0,0,0.2)', padding: '0.2rem 0.4rem', borderRadius: '4px' }}>재원구분</span>
+                <span style={{ background: 'rgba(0,0,0,0.2)', padding: '0.2rem 0.4rem', borderRadius: '4px' }}>세부사업코드_명칭</span>
                 <span style={{ background: 'rgba(0,0,0,0.2)', padding: '0.2rem 0.4rem', borderRadius: '4px' }}>교부금액</span>
               </div>
             </div>
@@ -1178,7 +1204,10 @@ export default function AdminDashboard() {
                 />
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '2rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2rem' }}>
+                <button type="button" className="btn btn-danger" onClick={handleDeleteAllAllocations} disabled={loading} style={{ background: 'var(--danger)', color: 'white' }}>
+                  모든 데이터 일괄 삭제 (초기화)
+                </button>
                 <button className="btn btn-primary" type="submit" disabled={loading || !uploadFile}>
                   {loading ? "데이터 처리 및 업로드 중..." : "예산 데이터 일괄 주입"}
                 </button>

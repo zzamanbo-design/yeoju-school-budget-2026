@@ -56,8 +56,10 @@ export async function POST(request: NextRequest) {
       const rowNum = i + 2; // 헤더 제외 1-indexed
 
       const rawSchoolName = row["학교명"] || row["학교 명"] || row["school_name"];
+      const rawSchoolLevel = row["학교급"] || row["school_level"];
+      const rawEstablishmentType = row["설립구분"] || row["establishment_type"];
       const rawType = row["사업유형"] || row["사업 유형"] || row["project_type"];
-      const rawProject = row["세부사업코드_및_명칭"] || row["세부사업"] || row["project_name"];
+      const rawProject = row["세부사업코드_및_명칭"] || row["세부사업코드_명칭"] || row["세부사업"] || row["project_name"];
       const rawSource = row["재원구분"] || row["재원 구분"] || row["funding_source"];
       const rawAmount = row["교부금액"] || row["금액"] || row["allocated_amount"];
 
@@ -110,6 +112,8 @@ export async function POST(request: NextRequest) {
 
       parsedAllocations.push({
         school_name: schoolName,
+        school_level: rawSchoolLevel ? String(rawSchoolLevel).trim() : null,
+        establishment_type: rawEstablishmentType ? String(rawEstablishmentType).trim() : null,
         project_code: projectCode,
         project_name: projectName,
         funding_source: fundingSource,
@@ -177,6 +181,39 @@ export async function POST(request: NextRequest) {
     console.error("Upload error:", err);
     return NextResponse.json(
       { error: "서버 오류가 발생했습니다." },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await getSession();
+
+    if (!session || session.role !== "admin") {
+      return NextResponse.json(
+        { error: "관리자 권한이 필요합니다." },
+        { status: 403 }
+      );
+    }
+
+    const allAllocationsSnap = await db.collection("allocations").get();
+    
+    for (let i = 0; i < allAllocationsSnap.docs.length; i += 400) {
+      const chunk = allAllocationsSnap.docs.slice(i, i + 400);
+      const batch = db.batch();
+      chunk.forEach((d: any) => batch.delete(d.ref));
+      await batch.commit();
+    }
+
+    return NextResponse.json({
+      success: true,
+      deletedCount: allAllocationsSnap.size
+    });
+  } catch (err) {
+    console.error("Bulk delete error:", err);
+    return NextResponse.json(
+      { error: "전체 삭제 중 서버 오류가 발생했습니다." },
       { status: 500 }
     );
   }
