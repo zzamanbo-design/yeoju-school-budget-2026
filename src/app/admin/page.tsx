@@ -45,7 +45,7 @@ export default function AdminDashboard() {
   
   // 상태 로딩 및 메시지
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "danger" | "info"; text: string } | null>(null);
+  const [message, setMessage] = useState<{ type: "success" | "danger" | "info"; text: string; details?: string[] } | null>(null);
 
   // 검색 및 필터링 상태
   const [searchQuery, setSearchQuery] = useState("");
@@ -144,6 +144,7 @@ export default function AdminDashboard() {
       setMessage({
         type: "success",
         text: `성공적으로 ${data.count}건의 예산 배정액을 일괄 등록했습니다. (누락/건너뜀: ${data.skippedCount}건)`,
+        details: data.skippedDetails,
       });
       setUploadFile(null);
       // 파일 인풋 초기화
@@ -683,14 +684,25 @@ export default function AdminDashboard() {
 
         {/* 상태 피드백 알림 */}
         {message && (
-          <div className={`alert alert-${message.type}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>{message.text}</span>
-            <button
-              onClick={() => setMessage(null)}
-              style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontWeight: 'bold' }}
-            >
-              ×
-            </button>
+          <div className={`alert alert-${message.type}`} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>{message.text}</span>
+              <button
+                onClick={() => setMessage(null)}
+                style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontWeight: 'bold' }}
+              >
+                ×
+              </button>
+            </div>
+            {message.details && message.details.length > 0 && (
+              <div style={{ marginTop: '0.5rem', padding: '0.5rem', background: 'rgba(0,0,0,0.05)', borderRadius: '4px', maxHeight: '200px', overflowY: 'auto', fontSize: '0.85rem' }}>
+                <ul style={{ margin: 0, paddingLeft: '1.5rem' }}>
+                  {message.details.map((detail, idx) => (
+                    <li key={idx}>{detail}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         )}
 
