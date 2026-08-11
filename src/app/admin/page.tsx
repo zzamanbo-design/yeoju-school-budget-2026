@@ -703,7 +703,7 @@ export default function AdminDashboard() {
           <div className="logo-group">
             <img src="/logo-circle.png" alt="경기도여주교육지원청" className="header-logo-img" />
             <div className="logo-text">여주 경기공유학교 학교맞춤형 예산지원센터</div>
-            <div className="user-badge">여주교육지원청 관리자</div>
+            <div className="user-badge">{userRole === "viewer" ? "여주시청 평생교육과" : "여주교육지원청 관리자"}</div>
           </div>
           <div className="nav-group">
             <button className="btn btn-secondary" onClick={handleLogout} style={{ padding: '0.5rem 1rem' }}>
