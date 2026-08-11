@@ -144,7 +144,7 @@ export default function AdminDashboard() {
       setMessage({
         type: "success",
         text: `성공적으로 ${data.count}건의 예산 배정액을 일괄 등록했습니다. (누락/건너뜀: ${data.skippedCount}건)`,
-        details: data.skippedDetails,
+        details: data.skipped,
       });
       setUploadFile(null);
       // 파일 인풋 초기화
