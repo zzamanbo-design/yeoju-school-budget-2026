@@ -11,7 +11,7 @@ interface SessionPayload {
   accountId: number;
   schoolId: number | null;
   schoolName: string;
-  role: "school" | "admin";
+  role: "school" | "admin" | "viewer";
   passwordChanged: boolean;
 }
 
