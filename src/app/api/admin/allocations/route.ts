@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminDb as db } from "@/lib/firebase-admin";
 import { getSession } from "@/lib/auth";
 
+export const dynamic = "force-dynamic";
+
 // 1. 모든 예산 배정 목록 조회 (학교명 포함)
 export async function GET(request: NextRequest) {
   try {

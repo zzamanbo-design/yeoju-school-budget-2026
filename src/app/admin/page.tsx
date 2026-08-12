@@ -25,6 +25,7 @@ interface Ticket {
   content: string;
   status: "OPEN" | "RESOLVED";
   answer: string | null;
+  answererRole?: string;
   createdAt: string;
   answeredAt: string | null;
 }
@@ -1354,6 +1355,16 @@ export default function AdminDashboard() {
                     </button>
                   </div>
                 </form>
+
+                <hr style={{ border: 'none', borderTop: '1px solid var(--border-card)', margin: '3rem 0 2rem 0' }} />
+
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--primary)' }}>여주시청 계정 비밀번호 초기화</h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1rem' }}>
+                  여주시청(cityhall) 계정의 비밀번호를 임시 비밀번호(yeoju2026!)로 초기화합니다.
+                </p>
+                <button type="button" className="btn btn-secondary" onClick={handleResetCityhall} disabled={loading} style={{ background: 'var(--danger)', color: 'white', border: 'none' }}>
+                  비밀번호 초기화 실행
+                </button>
               </>
             ) : (
               <div className="alert alert-info" style={{ marginTop: '2rem' }}>
@@ -1401,9 +1412,9 @@ export default function AdminDashboard() {
                       <div style={{ background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.2)', padding: '1rem', borderRadius: '8px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
                           <div style={{ fontWeight: 700, color: 'var(--success)', fontSize: '0.85rem' }}>
-                            교육지원청 답변 ({new Date(ticket.answeredAt || '').toLocaleDateString()})
+                            {ticket.answererRole === "viewer" ? "여주시청 답변" : "교육지원청 답변"} ({new Date(ticket.answeredAt || '').toLocaleDateString()})
                           </div>
-                          {userRole === "admin" && (
+                          {(userRole === "admin" || userRole === "viewer") && (
                             <div style={{ display: 'flex', gap: '0.5rem' }}>
                               <button className="btn btn-secondary" onClick={() => startEditTicket(ticket)} style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}>
                                 수정
@@ -1417,7 +1428,7 @@ export default function AdminDashboard() {
                         <p style={{ color: 'var(--text-primary)', fontSize: '0.9rem', whiteSpace: 'pre-wrap' }}>{ticket.answer}</p>
                       </div>
                     ) : (
-                      userRole === "admin" && (
+                      (userRole === "admin" || userRole === "viewer") && (
                         <div className="form-group" style={{ marginTop: '1rem' }}>
                           <textarea
                             className="form-control"

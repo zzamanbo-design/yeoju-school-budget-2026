@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb as db } from "@/lib/firebase-admin";
 import { getSession } from "@/lib/auth";
+
+export const dynamic = "force-dynamic";
 import { validateExpenditure } from "@/lib/validation";
 
 // 1. 지출 내역 전체 조회 (학교별 또는 특정 배정예산별)

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminDb as db } from "@/lib/firebase-admin";
 import { getSession } from "@/lib/auth";
 
+export const dynamic = "force-dynamic";
+
 // 1. 모든 티켓 조회 (학교명 포함)
 export async function GET(request: NextRequest) {
   try {
@@ -29,6 +31,7 @@ export async function GET(request: NextRequest) {
         content: t.content,
         status: t.status,
         answer: t.answer,
+        answererRole: t.answerer_role || "admin",
         createdAt: t.created_at?.toDate ? t.created_at.toDate().toISOString() : new Date().toISOString(),
         answeredAt: t.answered_at?.toDate ? t.answered_at.toDate().toISOString() : null,
       });
@@ -52,9 +55,9 @@ export async function PUT(request: NextRequest) {
   try {
     const session = await getSession();
 
-    if (!session || session.role !== "admin") {
+    if (!session || (session.role !== "admin" && session.role !== "viewer")) {
       return NextResponse.json(
-        { error: "관리자 권한이 필요합니다." },
+        { error: "관리자 또는 시청 권한이 필요합니다." },
         { status: 403 }
       );
     }
@@ -71,6 +74,7 @@ export async function PUT(request: NextRequest) {
     const ticketRef = db.collection("support_tickets").doc(id);
     await ticketRef.update({
       answer,
+      answerer_role: session.role,
       status: "RESOLVED",
       answered_at: new Date(),
     });
@@ -90,9 +94,9 @@ export async function DELETE(request: NextRequest) {
   try {
     const session = await getSession();
 
-    if (!session || session.role !== "admin") {
+    if (!session || (session.role !== "admin" && session.role !== "viewer")) {
       return NextResponse.json(
-        { error: "관리자 권한이 필요합니다." },
+        { error: "관리자 또는 시청 권한이 필요합니다." },
         { status: 403 }
       );
     }
@@ -109,6 +113,7 @@ export async function DELETE(request: NextRequest) {
     const ticketRef = db.collection("support_tickets").doc(id);
     await ticketRef.update({
       answer: null,
+      answerer_role: null,
       status: "OPEN",
       answered_at: null,
     });

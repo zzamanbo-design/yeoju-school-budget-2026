@@ -176,33 +176,7 @@ export default function SchoolDashboard() {
       return;
     }
 
-    const alloc = allocations.find(a => a.id.toString() === selectedAllocId);
-    if (alloc) {
-      const isSnack = expenseCategory === "학생 주·부식비" || expenseCategory === "주·부식비" || expenseCategory === "학생 주부식비";
-      
-      if (expenseCategory === "강사비") {
-        const lecturerSpent = alloc.expenditures?.filter((ex: any) => ex.expense_category === "강사비").reduce((sum: number, ex: any) => sum + ex.amount, 0) || 0;
-        const limit = alloc.allocated_amount * 0.5;
-        if (lecturerSpent + parsedAmount > limit) {
-          if (!window.confirm("강사비는 50%를 초과할 수 없습니다. 현재 입력하려는 내용이 맞습니까?\n금액을 나누기 어려우면 '기타'로 입력하세요.")) return;
-        }
-      } else if (isSnack) {
-        const snackSpent = alloc.expenditures?.filter((ex: any) => ex.expense_category === "학생 주·부식비" || ex.expense_category === "주·부식비" || ex.expense_category === "학생 주부식비").reduce((sum: number, ex: any) => sum + ex.amount, 0) || 0;
-        const limit = alloc.allocated_amount * 0.1;
-        if (snackSpent + parsedAmount > limit) {
-          if (!window.confirm("학생 주·부식비는 10%를 초과할 수 없습니다. 현재 입력하려는 내용이 맞습니까?\n금액을 나누기 어려우면 '기타'로 입력하세요.")) return;
-        }
-      } else if (expenseCategory === "업무추진비" && alloc.project_type === "공모") {
-        const execSpent = alloc.expenditures?.filter((ex: any) => ex.expense_category === "업무추진비").reduce((sum: number, ex: any) => sum + ex.amount, 0) || 0;
-        let limitPercent = 5;
-        if (alloc.project_code === "113") limitPercent = 30;
-        else if (alloc.project_code === "112") limitPercent = 5;
-        const limit = alloc.allocated_amount * (limitPercent / 100);
-        if (execSpent + parsedAmount > limit) {
-          if (!window.confirm(`공모 사업의 업무추진비는 ${limitPercent}%를 초과할 수 없습니다. 현재 입력하려는 내용이 맞습니까?\n금액을 나누기 어려우면 '기타'로 입력하세요.`)) return;
-        }
-      }
-    }
+    // 지출 비목 한도 제한 검사 로직 삭제됨
 
     // [사전 조건 검증] 자산취득성 교구 구입 경고 팝업 검사
     // 비목이 "자산취득비"이고 금액이 10만 원(100,000원) 이상인 경우 팝업 노출
@@ -285,14 +259,15 @@ export default function SchoolDashboard() {
     setEditingExpId(exp.id.toString());
     setEditExpAllocationId(exp.allocationId.toString());
     setEditExpCategory(exp.expenseCategory);
-    setEditExpAmount(String(exp.amount));
+    setEditExpAmount(exp.amount ? Number(exp.amount).toLocaleString() : "");
     setEditExpDate(exp.expenseDate);
     setEditExpDescription(exp.description || "");
   };
 
   // 지출 내역 수정 API 요청 호출
   const handleExpenseUpdate = async (expId: string | number, allocId: string | number) => {
-    if (!editExpAmount || Number(editExpAmount) <= 0) {
+    const parsedEditAmount = Number(editExpAmount.replace(/[^0-9]/g, ""));
+    if (!editExpAmount || parsedEditAmount <= 0) {
       setMessage({ type: "danger", text: "올바른 지출 금액을 입력해 주세요." });
       return;
     }
@@ -306,7 +281,7 @@ export default function SchoolDashboard() {
           id: expId,
           allocationId: editExpAllocationId,
           expenseCategory: editExpCategory,
-          amount: Number(editExpAmount),
+          amount: parsedEditAmount,
           expenseDate: editExpDate,
           description: editExpDescription.trim(),
         }),
@@ -467,7 +442,7 @@ export default function SchoolDashboard() {
             {allocations.length > 0 && (
               <div className="glass-card" style={{ marginBottom: '2.5rem' }}>
                 <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '0.25rem', color: 'var(--text-contrast)' }}>
-                  지출 내역 간편 기입 (인라인)
+                  지출 내역 간편 기입
                 </h2>
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
                   ※ 지출 비목, 지출(예정) 일자, 지출 세부 내용은 선택 입력 항목으로 필수 입력하지 않아도 등록 가능합니다.
@@ -499,7 +474,10 @@ export default function SchoolDashboard() {
                       id="expenseAmount"
                       placeholder="숫자만 입력"
                       value={amount}
-                      onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ""))}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/[^0-9]/g, "");
+                        setAmount(raw ? Number(raw).toLocaleString() : "");
+                      }}
                       required
                     />
                   </div>
@@ -780,7 +758,10 @@ export default function SchoolDashboard() {
                                     className="form-control"
                                     style={{ padding: '0.25rem 0.5rem', fontSize: '0.85rem', textAlign: 'right', width: '110px', height: '2.1rem' }}
                                     value={editExpAmount}
-                                    onChange={(evt) => setEditExpAmount(evt.target.value)}
+                                    onChange={(evt) => {
+                                      const raw = evt.target.value.replace(/[^0-9]/g, "");
+                                      setEditExpAmount(raw ? Number(raw).toLocaleString() : "");
+                                    }}
                                   />
                                 ) : (
                                   e.amount.toLocaleString() + "원"
@@ -948,7 +929,10 @@ export default function SchoolDashboard() {
                                 className="form-control"
                                 style={{ padding: '0.25rem 0.5rem', fontSize: '0.85rem', textAlign: 'right', width: '110px', height: '2.1rem' }}
                                 value={editExpAmount}
-                                onChange={(evt) => setEditExpAmount(evt.target.value)}
+                                onChange={(evt) => {
+                                  const raw = evt.target.value.replace(/[^0-9]/g, "");
+                                  setEditExpAmount(raw ? Number(raw).toLocaleString() : "");
+                                }}
                               />
                             ) : (
                               e.amount.toLocaleString() + "원"

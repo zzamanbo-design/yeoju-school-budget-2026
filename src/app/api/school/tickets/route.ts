@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminDb as db } from "@/lib/firebase-admin";
 import { getSession } from "@/lib/auth";
 
+export const dynamic = "force-dynamic";
+
 // 1. 현재 학교의 모든 티켓 조회
 export async function GET(request: NextRequest) {
   try {
