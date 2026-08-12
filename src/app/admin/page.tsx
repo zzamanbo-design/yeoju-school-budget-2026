@@ -255,6 +255,28 @@ export default function AdminDashboard() {
   };
 
   // 개별 예산 수정 시작
+  const handleResetCityhall = async () => {
+    if (!confirm("정말로 여주시청(cityhall) 계정의 비밀번호를 'yeoju2026!'으로 초기화하시겠습니까?")) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/reset-cityhall", {
+        method: "POST",
+      });
+      const data = await res.json();
+      
+      if (!res.ok) {
+        setMessage({ type: "danger", text: data.error || "비밀번호 초기화 중 오류가 발생했습니다." });
+        return;
+      }
+      
+      setMessage({ type: "success", text: data.message });
+    } catch {
+      setMessage({ type: "danger", text: "서버 오류가 발생했습니다." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const startEdit = (alloc: Allocation) => {
     setEditingId(alloc.id);
     setEditValue(alloc.allocatedAmount.toString());
