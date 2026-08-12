@@ -32,6 +32,7 @@ export async function GET(request: NextRequest) {
         content: t.content,
         status: t.status,
         answer: t.answer || null,
+        answererRole: t.answerer_role || "admin",
         created_at: t.created_at?.toDate ? t.created_at.toDate().toISOString() : new Date().toISOString(),
         answered_at: t.answered_at?.toDate ? t.answered_at.toDate().toISOString() : null,
       });

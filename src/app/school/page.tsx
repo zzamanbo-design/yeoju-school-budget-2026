@@ -34,6 +34,7 @@ interface Ticket {
   content: string;
   status: "OPEN" | "RESOLVED";
   answer: string | null;
+  answererRole?: string;
   created_at: string;
   answered_at: string | null;
 }
@@ -179,8 +180,8 @@ export default function SchoolDashboard() {
     // 지출 비목 한도 제한 검사 로직 삭제됨
 
     // [사전 조건 검증] 자산취득성 교구 구입 경고 팝업 검사
-    // 비목이 "자산취득비"이고 금액이 10만 원(100,000원) 이상인 경우 팝업 노출
-    if (expenseCategory === "자산취득비" && parsedAmount >= 100000 && !showAssetModal) {
+    // 비목이 "시설비 및 자산취득성 경비"이고 금액이 10만 원(100,000원) 이상인 경우 팝업 노출
+    if (expenseCategory === "시설비 및 자산취득성 경비" && parsedAmount >= 100000 && !showAssetModal) {
       setPendingExpenseSubmit(() => () => executeExpenseInsert(parsedAmount));
       setShowAssetModal(true);
       return;
@@ -496,7 +497,7 @@ export default function SchoolDashboard() {
                       <option value="학생 주·부식비">학생 주·부식비</option>
                       <option value="업무추진비">업무추진비</option>
                       <option value="여비">여비</option>
-                      <option value="자산취득비">자산취득비 (10만원 이상 사전승인)</option>
+                      <option value="시설비 및 자산취득성 경비">시설비 및 자산취득성 경비</option>
                     </select>
                   </div>
 
@@ -742,7 +743,7 @@ export default function SchoolDashboard() {
                                     <option value="학생 주·부식비">학생 주·부식비</option>
                                     <option value="업무추진비">업무추진비</option>
                                     <option value="여비">여비</option>
-                                    <option value="자산취득비">자산취득비</option>
+                                    <option value="시설비 및 자산취득성 경비">시설비 및 자산취득성 경비</option>
                                     <option value="기타">기타</option>
                                   </select>
                                 ) : (
@@ -913,7 +914,7 @@ export default function SchoolDashboard() {
                                 <option value="학생 주·부식비">학생 주·부식비</option>
                                 <option value="업무추진비">업무추진비</option>
                                 <option value="여비">여비</option>
-                                <option value="자산취득비">자산취득비</option>
+                                <option value="시설비 및 자산취득성 경비">시설비 및 자산취득성 경비</option>
                                 <option value="기타">기타</option>
                               </select>
                             ) : (
@@ -1097,7 +1098,7 @@ export default function SchoolDashboard() {
                     {t.status === "RESOLVED" && t.answer && (
                       <div style={{ background: 'rgba(6, 182, 212, 0.05)', borderLeft: '3px solid var(--secondary)', padding: '0.75rem', borderRadius: '4px' }}>
                         <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--secondary)', marginBottom: '0.25rem' }}>
-                          교육지원청 답변 ({new Date(t.answered_at || '').toLocaleDateString()})
+                          {t.answererRole === "viewer" ? "여주시청 답변" : "교육지원청 답변"} ({new Date(t.answered_at || '').toLocaleDateString()})
                         </div>
                         <p style={{ fontSize: '0.8rem', color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>{t.answer}</p>
                       </div>
@@ -1118,7 +1119,7 @@ export default function SchoolDashboard() {
               <span>⚠️ 사전 승인 안내</span>
             </div>
             <div className="modal-body">
-              <p>지출 항목이 <strong>[자산취득비]</strong>이며 지출 금액이 <strong>10만 원 이상</strong>입니다.</p>
+              <p>지출 항목이 <strong>[시설비 및 자산취득성 경비]</strong>이며 지출 금액이 <strong>10만 원 이상</strong>입니다.</p>
               <p style={{ color: 'var(--text-primary)', fontWeight: 700, marginTop: '0.75rem' }}>
                 ※ 여주미래교육협력지구 사업 지침에 따라 10만 원 이상의 자산취득성 교구 구입은 사전에 교육지원청 관리자의 승인이 필수적입니다.
               </p>
