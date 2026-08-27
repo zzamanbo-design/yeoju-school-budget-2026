@@ -1006,7 +1006,7 @@ export default function SchoolDashboard() {
           <div className="dashboard-layout">
             {/* 문의 작성 폼 */}
             <div className="glass-card">
-              <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '1.25rem' }}>새로운 애로사항/예산 승인 신청</h2>
+              <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '1.25rem' }}>문의 및 지원 필요사항</h2>
               
               <form onSubmit={handleTicketSubmit}>
                 <div className="form-group" style={{ display: "flex", gap: "1rem" }}>
