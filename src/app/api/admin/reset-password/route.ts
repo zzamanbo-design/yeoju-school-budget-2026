@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
       snap.forEach((accountDoc: any) => {
         batch.update(accountDoc.ref, {
           password_hash: hashPassword("yeoju2026!"),
-          password_changed: false,
+          password_changed: true,
         });
       });
 
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
 
     await accountRef.update({
       password_hash: hashPassword("yeoju2026!"),
-      password_changed: false,
+      password_changed: true,
     });
 
     return NextResponse.json({
