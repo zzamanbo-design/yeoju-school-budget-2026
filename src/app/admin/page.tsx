@@ -406,13 +406,14 @@ export default function AdminDashboard() {
   const startEditExp = (exp: any) => {
     setEditingExpId(exp.id);
     setEditExpCategory(exp.expenseCategory);
-    setEditExpAmount(String(exp.amount));
+    setEditExpAmount(exp.amount ? Number(exp.amount).toLocaleString("ko-KR") : "");
     setEditExpDate(exp.expenseDate);
     setEditExpDescription(exp.description || "");
   };
 
   const saveEditExp = async (expId: string, allocId: string) => {
-    if (!editExpAmount || Number(editExpAmount) <= 0) {
+    const parsedEditAmount = Number(String(editExpAmount).replace(/[^0-9]/g, ""));
+    if (!editExpAmount || parsedEditAmount <= 0) {
       alert("지출 금액을 0보다 큰 숫자로 입력해 주세요.");
       return;
     }
@@ -424,7 +425,7 @@ export default function AdminDashboard() {
         body: JSON.stringify({
           id: expId,
           expenseCategory: editExpCategory,
-          amount: Number(editExpAmount),
+          amount: parsedEditAmount,
           expenseDate: editExpDate,
           description: editExpDescription,
         }),
@@ -1127,6 +1128,7 @@ export default function AdminDashboard() {
                                                             <option value="학생 주·부식비">학생 주·부식비</option>
                                                             <option value="업무추진비">업무추진비</option>
                                                             <option value="여비">여비</option>
+                                                            <option value="시설비 및 자산취득성 경비">시설비 및 자산취득성 경비</option>
                                                             <option value="자산취득비">자산취득비</option>
                                                             <option value="기타">기타</option>
                                                           </select>
@@ -1150,11 +1152,15 @@ export default function AdminDashboard() {
                                                       <td style={{ textAlign: 'right', fontWeight: 700 }}>
                                                         {isEditing ? (
                                                           <input
-                                                            type="number"
+                                                            type="text"
+                                                            inputMode="numeric"
                                                             className="form-control"
-                                                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', textAlign: 'right', width: '110px', height: '1.8rem' }}
+                                                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', textAlign: 'right', width: '130px', height: '1.8rem' }}
                                                             value={editExpAmount}
-                                                            onChange={(e) => setEditExpAmount(e.target.value)}
+                                                            onChange={(e) => {
+                                                              const raw = e.target.value.replace(/[^0-9]/g, "");
+                                                              setEditExpAmount(raw ? Number(raw).toLocaleString("ko-KR") : "");
+                                                            }}
                                                           />
                                                         ) : (
                                                           exp.amount.toLocaleString() + "원"

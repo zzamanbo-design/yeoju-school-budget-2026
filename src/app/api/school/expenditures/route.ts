@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const parsedAmount = parseInt(String(amount), 10);
+    const parsedAmount = parseInt(String(amount).replace(/[^0-9]/g, ""), 10);
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
       return NextResponse.json(
         { error: "금액은 0보다 커야 합니다." },
@@ -235,7 +235,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const parsedAmount = parseInt(String(amount), 10);
+    const parsedAmount = parseInt(String(amount).replace(/[^0-9]/g, ""), 10);
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
       return NextResponse.json(
         { error: "금액은 0보다 커야 합니다." },

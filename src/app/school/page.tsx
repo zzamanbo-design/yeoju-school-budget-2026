@@ -260,7 +260,7 @@ export default function SchoolDashboard() {
     setEditingExpId(exp.id.toString());
     setEditExpAllocationId(exp.allocationId.toString());
     setEditExpCategory(exp.expenseCategory);
-    setEditExpAmount(exp.amount ? Number(exp.amount).toLocaleString() : "");
+    setEditExpAmount(exp.amount ? Number(exp.amount).toLocaleString("ko-KR") : "");
     setEditExpDate(exp.expenseDate);
     setEditExpDescription(exp.description || "");
   };
@@ -472,12 +472,13 @@ export default function SchoolDashboard() {
                     <input
                       className="form-control"
                       type="text"
+                      inputMode="numeric"
                       id="expenseAmount"
                       placeholder="숫자만 입력"
                       value={amount}
                       onChange={(e) => {
                         const raw = e.target.value.replace(/[^0-9]/g, "");
-                        setAmount(raw ? Number(raw).toLocaleString() : "");
+                        setAmount(raw ? Number(raw).toLocaleString("ko-KR") : "");
                       }}
                       required
                     />
@@ -755,13 +756,14 @@ export default function SchoolDashboard() {
                               <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--text-contrast)' }}>
                                 {isEditing ? (
                                   <input
-                                    type="number"
+                                    type="text"
+                                    inputMode="numeric"
                                     className="form-control"
-                                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.85rem', textAlign: 'right', width: '110px', height: '2.1rem' }}
+                                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.85rem', textAlign: 'right', width: '130px', height: '2.1rem' }}
                                     value={editExpAmount}
                                     onChange={(evt) => {
                                       const raw = evt.target.value.replace(/[^0-9]/g, "");
-                                      setEditExpAmount(raw ? Number(raw).toLocaleString() : "");
+                                      setEditExpAmount(raw ? Number(raw).toLocaleString("ko-KR") : "");
                                     }}
                                   />
                                 ) : (
@@ -926,13 +928,14 @@ export default function SchoolDashboard() {
                           <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--text-contrast)' }}>
                             {isEditing ? (
                               <input
-                                type="number"
+                                type="text"
+                                inputMode="numeric"
                                 className="form-control"
-                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.85rem', textAlign: 'right', width: '110px', height: '2.1rem' }}
+                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.85rem', textAlign: 'right', width: '130px', height: '2.1rem' }}
                                 value={editExpAmount}
                                 onChange={(evt) => {
                                   const raw = evt.target.value.replace(/[^0-9]/g, "");
-                                  setEditExpAmount(raw ? Number(raw).toLocaleString() : "");
+                                  setEditExpAmount(raw ? Number(raw).toLocaleString("ko-KR") : "");
                                 }}
                               />
                             ) : (
